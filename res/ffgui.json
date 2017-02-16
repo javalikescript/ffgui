@@ -1,0 +1,83 @@
+{
+	'encodingConfig' : {
+		'mp4' : {
+			'format' : {
+				'-f' : 'mp4',
+				'-threads' : '0',
+				'-strict' : 'experimental'
+			},
+			'audio' : {
+				'-acodec' : 'aac'
+			},
+			'video' : {
+				'-vcodec' : 'h264',
+				'-profile:v' : 'baseline'
+			},
+			'avideo' : {
+				'-pix_fmt' : 'yuv420p'
+			}
+		},
+		'Xvid' : {
+			'format' : {
+				'-f' : 'avi'
+			},
+			'audio' : {
+				'-acodec' : 'mp3'
+			},
+			'video' : {
+				'-vcodec' : 'mpeg4'
+			},
+			'avideo' : {
+				'-g' : '300',
+				'-vtag' : 'XVID',
+				'-trellis' : '1',
+				'-cmp' : 'bit',
+				'-subcmp' : 'bit'
+			}
+		},
+		'WebM' : {
+			'format' : {
+				'-f' : 'webm'
+			},
+			'audio' : {
+				'-acodec' : 'vorbis'
+			},
+			'video' : {
+				'-vcodec' : 'vp8'
+			},
+			'avideo' : {
+				'-r' : '13',
+				'-g' : '120',
+				'-profile' : '0'
+			}
+		},
+		'Flash Video' : {
+			'format' : {
+				'-f' : 'flv'
+			},
+			'audio' : {
+				'-acodec' : 'mp3'
+			},
+			'video' : {
+				'-vcodec' : 'flv1'
+			},
+			'avideo' : {
+				'-g' : '160'
+			}
+		},
+		'Windows Media Video' : {
+			'format' : {
+				'-f' : 'wmv'
+			},
+			'audio' : {
+				'-acodec' : 'wmav2'
+			},
+			'video' : {
+				'-vcodec' : 'wmv2'
+			},
+			'avideo' : {
+				'-r' : '25'
+			}
+		}
+	}
+}

@@ -1,0 +1,360 @@
+{
+    'format' : {
+        'title' : 'Format',
+        'optionArgument' : '-f',
+        'arguments' : [{
+            'label' : 'format',
+            'name' : '-f',
+            'map' : {
+                'ac3' : 'raw AC-3',
+                'avi' : 'AVI (Audio Video Interleaved)',
+                'dv' : 'DV (Digital Video)',
+                'dvd' : 'MPEG-2 PS (DVD VOB)',
+                'f4v' : 'F4V Adobe Flash Video',
+                'flac' : 'raw FLAC',
+                'flv' : 'FLV (Flash Video)',
+                'ipod' : 'iPod H.264 MP4 (MPEG-4 Part 14)',
+                'm4v' : 'raw MPEG-4 video',
+                'matroska' : 'Matroska',
+                'mov' : 'QuickTime / MOV',
+                'mp2' : 'MP2 (MPEG audio layer 2)',
+                'mp3' : 'MP3 (MPEG audio layer 3)',
+                'mp4' : 'MP4 (MPEG-4 Part 14)',
+                'mpegts' : 'MPEG-TS (MPEG-2 Transport Stream)',
+                'svcd' : 'MPEG-2 PS (SVCD)',
+                'vcd' : 'MPEG-1 Systems / MPEG program stream (VCD)',
+                'vob' : 'MPEG-2 PS (VOB)',
+                'wav' : 'WAV / WAVE (Waveform Audio)',
+                'webm' : 'WebM'
+            }
+        }, {
+            'label' : 'codec',
+            'name' : '-c',
+            'map' : {
+                'copy' : 'copy'
+            }
+        }, {
+            'label' : 'strict',
+            'name' : '-strict',
+            'map' : {
+                'very' : 'strictly conform to a older more strict version of the spec or reference software',
+                'strict' : 'strictly conform to all the things in the spec no matter what the consequences',
+                'normal' : '',
+                'unofficial' : 'allow unofficial extensions',
+                'experimental' : 'allow non-standardized experimental things'
+            }
+        }, {
+            'description' : 'use fixed quality scale (VBR)',
+            'label' : 'fixed quality scale',
+            'name' : '-qscale'
+        }, {
+            'label' : 'Finish encoding when the shortest input stream ends',
+            'name' : '-shortest',
+            'noValue' : true
+        }, {
+            'label' : 'threads',
+            'name' : '-threads',
+            'values' : ['auto', '0']
+        }, {
+            'label' : 'map',
+            'name' : '-map',
+            'map' : {
+                '0' : 'Map all streams'
+            }
+        }, {
+            'label' : 'Shift timestamps',
+            'name' : '-avoid_negative_ts',
+            'map' : {
+                '-1' : 'auto',
+                '0' : 'do not change timestamps',
+                '1' : 'shift timestamps so they are non negative',
+                '2' : 'shift timestamps so they start at 0'
+            }
+        }, {
+            'label' : 'Do not process input timestamps',
+            'name' : '-copyts',
+            'noValue' : true
+        }, {
+            'label' : 'logging level',
+            'name' : '-loglevel',
+            'map' : {
+                'quiet' : 'Show nothing at all',
+                'panic' : 'Not used',
+                'fatal' : 'Only show fatal errors',
+                'error' : 'Show all errors',
+                'warning' : 'Show all warnings and errors',
+                'info' : 'Show informative messages during processing',
+                'verbose' : 'Same as info, except more verbose',
+                'debug' : 'Show everything',
+                'trace' : 'shift timestamps so they start at 0'
+            }
+        }
+        ],
+        'options' : {
+            'mpegts' : {
+                'arguments' : [{
+                    'description' : 'Enable m2ts mode if set to 1',
+                    'label' : 'm2ts mode',
+                    'name' : '-mpegts_m2ts_mode',
+                    'values' : ['-1', '1']
+                }
+                ]
+            }
+        }
+    },
+    'audio' : {
+        'title' : 'Audio',
+        'optionArgument' : '-acodec',
+        'arguments' : [{
+            'label' : 'disable audio',
+            'name' : '-an',
+            'noValue' : true
+        }, {
+            'label' : 'audio codec',
+            'name' : '-acodec',
+            'map' : {
+                'copy' : 'copy',
+                'aac' : 'AAC (Advanced Audio Coding) (encoders: aac libvo_aacenc )',
+                'ac3' : 'ATSC A/52A (AC-3) (encoders: ac3 ac3_fixed )',
+                'alac' : 'ALAC (Apple Lossless Audio Codec)',
+                'dts' : 'DCA (DTS Coherent Acoustics) (decoders: dca ) (encoders: dca )',
+                'eac3' : 'ATSC A/52B (AC-3, E-AC-3)',
+                'flac' : 'FLAC (Free Lossless Audio Codec)',
+                'mp2' : 'MP2 (MPEG audio layer 2) (decoders: mp2 mp2float ) (encoders: mp2 libtwolame )',
+                'mp3' : 'MP3 (MPEG audio layer 3) (decoders: mp3 mp3float ) (encoders: libmp3lame )',
+                'vorbis' : 'Vorbis (decoders: vorbis libvorbis ) (encoders: vorbis libvorbis )',
+                'wmav1' : 'Windows Media Audio 1',
+                'wmav2' : 'Windows Media Audio 2'
+            },
+            'value' : 'copy'
+        }, {
+            'description' : 'audio sampling rate (in Hz)',
+            'label' : 'rate',
+            'name' : '-ar'
+        }, {
+            'label' : 'audio bitrate',
+            'name' : '-b:a'
+        }, {
+            'description' : 'number of audio channels',
+            'label' : 'channels',
+            'name' : '-ac',
+            'values' : ['2', '1']
+        }, {
+            'description' : 'change audio volume',
+            'label' : 'audio volume',
+            'name' : '-vol',
+            'values' : ['256']
+        }, {
+            'label' : 'audio filter',
+            'name' : '-af'
+        }
+        ]
+    },
+    'video' : {
+        'title' : 'Video',
+        'optionArgument' : '-vcodec',
+        'arguments' : [{
+            'label' : 'disable video',
+            'name' : '-vn',
+            'noValue' : true
+        }, {
+            'label' : 'video codec',
+            'name' : '-vcodec',
+            'map' : {
+                'copy' : 'copy',
+                'dvvideo' : 'DV (Digital Video)',
+                'flv1' : 'FLV / Sorenson Spark / Sorenson H.263 (Flash Video) (decoders: flv ) (encoders: flv )',
+                'h261' : 'H.261',
+                'h263' : 'H.263 / H.263-1996, H.263+ / H.263-1998 / H.263 version 2',
+                'h263p' : 'H.263+ / H.263-1998 / H.263 version 2',
+                'h264' : 'H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10 (encoders: libx264 libx264rgb )',
+                'mjpeg' : 'Motion JPEG',
+                'mpeg1video' : 'MPEG-1 video',
+                'mpeg2video' : 'MPEG-2 video (decoders: mpeg2video mpegvideo )',
+                'mpeg4' : 'MPEG-4 part 2 (encoders: mpeg4 libxvid )',
+                'msmpeg4v2' : 'MPEG-4 part 2 Microsoft variant version 2',
+                'msmpeg4v3' : 'MPEG-4 part 2 Microsoft variant version 3 (decoders: msmpeg4 ) (encoders: msmpeg4 )',
+                'msvideo1' : 'Microsoft Video 1',
+                'rawvideo' : 'raw video',
+                'theora' : 'Theora (encoders: libtheora )',
+                'vp8' : 'On2 VP8 (decoders: vp8 libvpx ) (encoders: libvpx )',
+                'wmv1' : 'Windows Media Video 7',
+                'wmv2' : 'Windows Media Video 8'
+            },
+            'value' : 'copy'
+        }, {
+            'description' : 'frame size (WxH or abbreviation)',
+            'label' : 'size',
+            'name' : '-s',
+            'map' : {
+                '1920x1080' : '1080i, 1080p (HDTV, Blu-ray)',
+                '1600x900' : '900p',
+                '1280x720' : '',
+                '1366x768' : 'HD ready',
+                '720x576' : 'DVD (PAL)',
+                '720x480' : 'DVD (NTSC)',
+                '480x480' : 'SVCD (NTSC)',
+                '480x576' : 'SVCD (PAL)',
+                '1024x576' : '',
+                '768x432' : '',
+                '640x360' : '',
+                '512x288' : '',
+                '256x144' : ''
+            }
+        }, {
+            'description' : 'aspect ratio',
+            'label' : 'aspect',
+            'name' : '-aspect',
+            'values' : ['16:9', '16:10', '5:3', '4:3', '3:2', '1:1']
+        }, {
+            'description' : 'frame rate (Hz value, fraction or abbreviation)',
+            'label' : 'rate',
+            'name' : '-r',
+            'map' : {
+                '23.976' : 'film-looking frame rate compatible with NTSC clock speed standards',
+                '24' : 'international film and ATSC high-definition material',
+                '25' : 'PAL, SECAM film, standard-definition, and high-definition material',
+                '29.97' : 'NTSC standard-definition material',
+                '59.94' : 'ATSC high-definition material',
+                '60' : 'ATSC high-definition material'
+            }
+        }, {
+            'label' : 'video bitrate',
+            'name' : '-b:v'
+        }, {
+            'label' : 'deinterlace',
+            'name' : '-deinterlace',
+            'noValue' : true
+        }
+        ],
+        'options' : {
+            'h264' : {
+                'arguments' : [{
+                    'description' : 'Force the limits of an H.264 profile [high]',
+                    'label' : 'profile',
+                    'name' : '-profile:v',
+                    'values' : ['baseline', 'main', 'high']
+                }, {
+                    'description' : 'Quality-based VBR (0-51, 0=lossless) [23.0]',
+                    'label' : 'quality-based VBR',
+                    'name' : '-crf',
+                    'values' : ['0', '23.0', '51']
+                }, {
+                    'description' : 'Use a preset to select encoding settings [medium]',
+                    'label' : 'preset',
+                    'name' : '-preset',
+                    'values' : ['ultrafast', 'superfast', 'veryfast', 'faster', 'fast', 'medium', 'slow', 'slower', 'veryslow', 'placebo']
+                }, {
+                    'description' : 'Tune the settings for a particular type of source or situation',
+                    'label' : 'tune',
+                    'name' : '-tune',
+                    'values' : ['film', 'animation', 'grain', 'stillimage', 'psnr', 'ssim', 'fastdecode', 'zerolatency']
+                }
+                ]
+            }
+        }
+    },
+    'avideo' : {
+        'title' : 'Video Adv.',
+        'arguments' : [{
+            'label' : 'flags',
+            'name' : '-flags',
+            'map' : {
+                'mv4': 'use four motion vectors per macroblock (MPEG-4)',
+                'qpel': 'use 1/4-pel motion compensation',
+                'loop': 'use loop filter',
+                'gmc': 'use gmc',
+                'mv0': 'always try a mb with mv=<0,0>',
+                'gray': 'only decode/encode grayscale',
+                'psnr': 'error[?] variables will be set during encoding',
+                'naq': 'normalize adaptive quantization',
+                'ildct': 'use interlaced DCT',
+                'low_delay': 'force low delay',
+                'global_header': 'place global headers in extradata instead of every keyframe',
+                'bitexact': 'use only bitexact functions (except (I)DCT)',
+                'aic': 'H.263 advanced intra coding / MPEG-4 AC prediction',
+                'cbp': 'Deprecated, use mpegvideo private options instead',
+                'qprd': 'Deprecated, use mpegvideo private options instead',
+                'ilme': 'interlaced motion estimation',
+                'cgop': 'closed GOP'
+            }
+        }, {
+            'label' : 'pixel format',
+            'name' : '-pix_fmt',
+            'values' : ['yuv420p', 'yuyv422', 'rgb24', 'bgr24', 'yuv422p', 'yuv444p', 'yuv410p', 'yuv411p', 'gray', 'monow', 'monob', 'yuvj420p', 'yuvj422p', 'yuvj444p', 'uyvy422', 'bgr8', 'bgr4_byte', 'rgb8', 'rgb4_byte', 'nv12', 'nv21', 'argb', 'rgba', 'abgr', 'bgra', 'gray16be', 'gray16le', 'yuv440p', 'yuvj440p', 'yuva420p', 'rgb48be', 'rgb48le', 'rgb565be', 'rgb565le', 'rgb555be', 'rgb555le', 'bgr565be', 'bgr565le', 'bgr555be', 'bgr555le', 'yuv420p16le', 'yuv420p16be', 'yuv422p16le', 'yuv422p16be', 'yuv444p16le', 'yuv444p16be', 'rgb444le', 'rgb444be', 'bgr444le', 'bgr444be', 'bgr48be', 'bgr48le', 'yuv420p9be', 'yuv420p9le', 'yuv420p10be', 'yuv420p10le', 'yuv422p10be', 'yuv422p10le', 'yuv444p9be', 'yuv444p9le', 'yuv444p10be', 'yuv444p10le', 'yuv422p9be', 'yuv422p9le', 'gbrp', 'gbrp9be', 'gbrp9le', 'gbrp10be', 'gbrp10le', 'yuva420p9be', 'yuva420p9le', 'yuva422p9be', 'yuva422p9le', 'yuva444p9be', 'yuva444p9le', 'yuva420p10be', 'yuva420p10le', 'yuva422p10be', 'yuva422p10le', 'yuva444p10be', 'yuva444p10le', 'yuva420p16be', 'yuva420p16le', 'yuva422p16be', 'yuva422p16le', 'yuva444p16be', 'yuva444p16le', '0rgb', 'rgb0', '0bgr', 'bgr0', 'yuva444p', 'yuva422p', 'yuv420p12be', 'yuv420p12le', 'yuv420p14be', 'yuv420p14le', 'yuv422p12be', 'yuv422p12le', 'yuv422p14be', 'yuv422p14le', 'yuv444p12be', 'yuv444p12le', 'yuv444p14be', 'yuv444p14le', 'gbrp12be', 'gbrp12le', 'gbrp14be', 'gbrp14le']
+        }, {
+            'description' : 'quality for constant quality mode (from 0 to 63)',
+            'label' : 'crf',
+            'name' : '-crf'
+        }, {
+            'description' : 'group of picture (GOP) size',
+            'label' : 'GOP size',
+            'name' : '-g'
+        }, {
+            'description' : 'force video tag/fourcc',
+            'label' : 'fourcc/tag',
+            'name' : '-vtag'
+        }, {
+            'description' : 'rate-distortion optimal quantization',
+            'label' : 'rate-distortion',
+            'name' : '-trellis'
+        }, {
+            'description' : 'video sync method',
+            'label' : 'video sync method',
+            'name' : '-vsync',
+            'values' : ['passthrough', 'cfr', 'vfr', 'drop', 'auto']
+        }, {
+            'label' : 'copy timestamps',
+            'name' : '-copyts',
+            'noValue' : true
+        }, {
+            'description' : 'full-pel ME compare function',
+            'label' : 'compare function',
+            'name' : '-cmp',
+            'values' : ['sad', 'sse', 'satd', 'dct', 'psnr', 'bit', 'rd', 'zero', 'vsad', 'vsse', 'nsse', 'w53', 'w97', 'dctmax', 'chroma']
+        }, {
+            'description' : 'sub-pel ME compare function',
+            'label' : 'compare function',
+            'name' : '-subcmp',
+            'values' : ['sad', 'sse', 'satd', 'dct', 'psnr', 'bit', 'rd', 'zero', 'vsad', 'vsse', 'nsse', 'w53', 'w97', 'dctmax', 'chroma']
+        }, {
+            'description' : 'use "frames" B frames (from -1 to 16)',
+            'label' : 'B frames',
+            'name' : '-bf'
+        }, {
+            'description' : 'set ratecontrol buffer size (in bits)',
+            'label' : 'buffer size',
+            'name' : '-bufsize'
+        }, {
+            'description' : 'fixed quality scale (VBR)',
+            'label' : 'quality scale',
+            'name' : '-qscale'
+        }, {
+            'label' : 'video filter',
+            'name' : '-vf',
+            'values' : ['setpts=6*PTS']
+        }
+        ]
+    },
+    'subtitle' : {
+        'title' : 'Subtitle',
+        'optionArgument' : '-scodec',
+        'arguments' : [{
+            'label' : 'disable subtitle',
+            'name' : '-sn',
+            'noValue' : true
+        }, {
+            'label' : 'subtitle codec',
+            'name' : '-scodec',
+            'map' : {
+                'copy' : 'copy',
+        'ass' : 'ass',
+        'srt' : 'srt',
+        'ssa' : 'ssa',
+        'mov_text' : 'mov_text'
+            },
+            'value' : 'copy'
+        }
+        ]
+    }
+}
