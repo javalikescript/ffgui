@@ -65,14 +65,7 @@ define('spyl/ffgui/Config', [
             Logger.getInstance().debug('configuration saved');
         },
         getSourceId : function(file) {
-            var hash = Config.hashString(file.getPath());
-            id = hash.toString(36) + '-' + Math.floor(file.lastModified() / 1000).toString(36) + '-' + file.length().toString(36);
-            //System.out.println('getSourceId() => "' + id + '"');
-            /*var dir = new File(this._tmpFile, id);
-    	if (dir.exists()) {
-    		throw '';
-    	}*/
-            return id;
+            return Config.getSourceId(file);
         },
         get : function() {
             return this._config;
@@ -91,8 +84,7 @@ define('spyl/ffgui/Config', [
         }
     });
 
-    Object.extend(Config,
-            {
+    Object.extend(Config, {
         loadAsString: function(file) {
             if ((! file.exists()) || (file.length() > 20480)) {
                 return '';
@@ -122,6 +114,11 @@ define('spyl/ffgui/Config', [
                 output.close();
             }
         },
+        getSourceId : function(file) {
+            var hash = Config.hashString(file.getPath());
+            id = hash.toString(36) + '-' + Math.floor(file.lastModified() / 1000).toString(36) + '-' + file.length().toString(36);
+            return id;
+        },
         cleanDir: function(dir) {
             var files = dir.listFiles();
             for (var i = 0; i < files.length; i++) {
@@ -148,12 +145,14 @@ define('spyl/ffgui/Config', [
             return StringCodec.hexEncode(buffer);
         },
         MINIATURE_SIZE: 144, // 144 108 96
+        PART_SIZE: 48,
         DEFAULT_GAP: 3,
+        DEFAULT_TOP_HEIGHT: 32,
         DEFAULT_WIDTH: '33px',
         DEFAULT_HEIGHT: '22px',
         DEFAULT_HEIGHT_LARGE: '44px',
         DEFAULT_LABEL_WIDTH: '160px'
-            });
+    });
 
     return Config;
 });

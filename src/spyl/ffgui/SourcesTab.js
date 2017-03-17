@@ -132,11 +132,10 @@ define('spyl/ffgui/SourcesTab', [
         }
     });
 
-    Object.extend(SourcesTab,
-            {
+    Object.extend(SourcesTab, {
         DEFAULT_HEIGHT: (Config.DEFAULT_GAP + (parseInt(Config.DEFAULT_HEIGHT, 10) + Config.DEFAULT_GAP) * 2) + 'px',
         SourceInfo: SourceInfo
-            });
+    });
 
     return SourcesTab;
 });

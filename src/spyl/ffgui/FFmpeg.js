@@ -7,6 +7,7 @@ define('spyl/ffgui/FFmpeg', [
   'jls/lang/ProcessBuilder',
   'jls/lang/ByteBuffer',
   'jls/lang/CharBuffer',
+  'jls/lang/Promise',
   'jls/io/File',
   'jls/io/FileInputStream',
   'jls/io/InputStreamReader',
@@ -26,6 +27,7 @@ define('spyl/ffgui/FFmpeg', [
   ProcessBuilder,
   ByteBuffer,
   CharBuffer,
+  Promise,
   File,
   FileInputStream,
   InputStreamReader,
@@ -40,57 +42,57 @@ define('spyl/ffgui/FFmpeg', [
 
     var FFmpeg;
     /*
-See http://www.transcoding.org/transcode?Aspect_Ratio
-There are two types of aspect ratios involved in video editing.
-One is display aspect ratio or DAR; this is the ratio most commonly referred to by the term "aspect ratio",
-and is the ratio of the video frame's physical (displayed) width to its height,
-regardless of the number of pixels used to represent the video image.
-Typical DAR values are 4:3 for standard-definition video or 16:9 for widescreen television.
-
-The other type of aspect ratio is pixel aspect ratio, or PAR (also known as "sample aspect ratio" or SAR).
-This is the ratio of the width to the height of a single pixel in the video image;
-a PAR of 1:1 means that each pixel is a perfect square,
-while a PAR of 2:1 would mean that each pixel is a rectangle twice as wide as it is tall.
-PAR can be used to refer either to the pixels in a video file, or to the pixels on a physical display device such as a television.
-
-These two aspect ratios are related to each other and the number of pixels in the video frame (or display device) as follows:
-
-    DAR   width
-    --- = ------
-    PAR   height
+    See http://www.transcoding.org/transcode?Aspect_Ratio
+    There are two types of aspect ratios involved in video editing.
+    One is display aspect ratio or DAR; this is the ratio most commonly referred to by the term "aspect ratio",
+    and is the ratio of the video frame's physical (displayed) width to its height,
+    regardless of the number of pixels used to represent the video image.
+    Typical DAR values are 4:3 for standard-definition video or 16:9 for widescreen television.
+    
+    The other type of aspect ratio is pixel aspect ratio, or PAR (also known as "sample aspect ratio" or SAR).
+    This is the ratio of the width to the height of a single pixel in the video image;
+    a PAR of 1:1 means that each pixel is a perfect square,
+    while a PAR of 2:1 would mean that each pixel is a rectangle twice as wide as it is tall.
+    PAR can be used to refer either to the pixels in a video file, or to the pixels on a physical display device such as a television.
+    
+    These two aspect ratios are related to each other and the number of pixels in the video frame (or display device) as follows:
+    
+        DAR   width
+        --- = ------
+        PAR   height
      */
     /*
-A few multimedia containers (MPEG-1, MPEG-2 PS, DV) allow to join video files by merely concatenating them. 
-
-Hence you may concatenate your multimedia files by first transcoding them to these privileged formats, then using the humble cat command (or the equally humble copy under Windows), and finally transcoding back to your format of choice. 
-
-ffmpeg -i input1.avi -sameq intermediate1.mpg
-ffmpeg -i input2.avi -sameq intermediate2.mpg
-cat intermediate1.mpg intermediate2.mpg > intermediate_all.mpg
-ffmpeg -i intermediate_all.mpg -sameq output.avi
-
-Notice that you should either use -sameq or set a reasonably high bitrate for your intermediate and output files, if you want to preserve video quality. 
+    A few multimedia containers (MPEG-1, MPEG-2 PS, DV) allow to join video files by merely concatenating them. 
+    
+    Hence you may concatenate your multimedia files by first transcoding them to these privileged formats, then using the humble cat command (or the equally humble copy under Windows), and finally transcoding back to your format of choice. 
+    
+    ffmpeg -i input1.avi -sameq intermediate1.mpg
+    ffmpeg -i input2.avi -sameq intermediate2.mpg
+    cat intermediate1.mpg intermediate2.mpg > intermediate_all.mpg
+    ffmpeg -i intermediate_all.mpg -sameq output.avi
+    
+    Notice that you should either use -sameq or set a reasonably high bitrate for your intermediate and output files, if you want to preserve video quality. 
      */
     /*
-Similarly, the yuv4mpegpipe format, and the raw video, raw audio codecs also allow concatenation, and the transcoding step is almost lossless. When using multiple yuv4mpegpipe(s), the first line needs to be discarded from all but the first stream. This can be accomplished by piping through tail as seen below. Note that when piping through tail you must use command grouping, { ;}, to background properly.
-For example, let's say we want to join two FLV files into an output.flv file:
-
-mkfifo temp1.a
-mkfifo temp1.v
-mkfifo temp2.a
-mkfifo temp2.v
-mkfifo all.a
-mkfifo all.v
-ffmpeg -i input1.flv -vn -f u16le -acodec pcm_s16le -ac 2 -ar 44100 - > temp1.a < /dev/null &
-ffmpeg -i input2.flv -vn -f u16le -acodec pcm_s16le -ac 2 -ar 44100 - > temp2.a < /dev/null &
-ffmpeg -i input1.flv -an -f yuv4mpegpipe - > temp1.v < /dev/null &
-{ ffmpeg -i input2.flv -an -f yuv4mpegpipe - < /dev/null | tail -n +2 > temp2.v ; } &
-cat temp1.a temp2.a > all.a &
-cat temp1.v temp2.v > all.v &
-ffmpeg -f u16le -acodec pcm_s16le -ac 2 -ar 44100 -i all.a \
-       -f yuv4mpegpipe -i all.v \
-       -sameq -y output.flv
-rm temp[12].[av] all.[av]
+    Similarly, the yuv4mpegpipe format, and the raw video, raw audio codecs also allow concatenation, and the transcoding step is almost lossless. When using multiple yuv4mpegpipe(s), the first line needs to be discarded from all but the first stream. This can be accomplished by piping through tail as seen below. Note that when piping through tail you must use command grouping, { ;}, to background properly.
+    For example, let's say we want to join two FLV files into an output.flv file:
+    
+    mkfifo temp1.a
+    mkfifo temp1.v
+    mkfifo temp2.a
+    mkfifo temp2.v
+    mkfifo all.a
+    mkfifo all.v
+    ffmpeg -i input1.flv -vn -f u16le -acodec pcm_s16le -ac 2 -ar 44100 - > temp1.a < /dev/null &
+    ffmpeg -i input2.flv -vn -f u16le -acodec pcm_s16le -ac 2 -ar 44100 - > temp2.a < /dev/null &
+    ffmpeg -i input1.flv -an -f yuv4mpegpipe - > temp1.v < /dev/null &
+    { ffmpeg -i input2.flv -an -f yuv4mpegpipe - < /dev/null | tail -n +2 > temp2.v ; } &
+    cat temp1.a temp2.a > all.a &
+    cat temp1.v temp2.v > all.v &
+    ffmpeg -f u16le -acodec pcm_s16le -ac 2 -ar 44100 -i all.a \
+           -f yuv4mpegpipe -i all.v \
+           -sameq -y output.flv
+    rm temp[12].[av] all.[av]
      */
 
     FFmpeg = Class.create({
@@ -131,16 +133,16 @@ rm temp[12].[av] all.[av]
                     }
             };
             /*
-        Codecs:
-         D..... = Decoding supported
-         .E.... = Encoding supported
-         ..V... = Video codec
-         ..A... = Audio codec
-         ..S... = Subtitle codec
-         ...I.. = Intra frame-only codec
-         ....L. = Lossy compression
-         .....S = Lossless compression
-         -------
+            Codecs:
+             D..... = Decoding supported
+             .E.... = Encoding supported
+             ..V... = Video codec
+             ..A... = Audio codec
+             ..S... = Subtitle codec
+             ...I.. = Intra frame-only codec
+             ....L. = Lossy compression
+             .....S = Lossless compression
+             -------
              */
             var lineNumber = 0;
             for (;;) {
@@ -195,10 +197,10 @@ rm temp[12].[av] all.[av]
                     encoder: {}
             };
             /*
-		File formats:
-		 D. = Demuxing supported
-		 .E = Muxing supported
-		 --
+    		File formats:
+    		 D. = Demuxing supported
+    		 .E = Muxing supported
+    		 --
              */
             var lineNumber = 0;
             for (;;) {
@@ -347,8 +349,7 @@ rm temp[12].[av] all.[av]
         return i;
     }
 
-    Object.extend(FFmpeg,
-            {
+    Object.extend(FFmpeg, {
         charset : 'ASCII', // Should be Cp850 or UTF-8 ?
         computeAspectRatio : function(width, height) {
             if (typeof width == 'string') {
@@ -426,8 +427,7 @@ rm temp[12].[av] all.[av]
             }
             return file.getPath();
         }
-            });
-
+    });
 
     return FFmpeg;
 });

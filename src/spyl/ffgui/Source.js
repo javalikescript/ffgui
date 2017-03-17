@@ -2,6 +2,7 @@ define('spyl/ffgui/Source', [
   'jls/lang/Class',
   'jls/lang/Exception',
   'jls/lang/Logger',
+  'jls/lang/Promise',
   'jls/io/File',
   'spyl/ffgui/Config',
   'spyl/ffgui/FFmpeg'
@@ -9,18 +10,19 @@ define('spyl/ffgui/Source', [
   Class,
   Exception,
   Logger,
+  Promise,
   File,
   Config,
   FFmpeg
 ) {
 
     var Source = Class.create({
-        initialize : function(ffgui, id, file) {
-            this._ffgui = ffgui;
+        initialize : function(ffmpeg, config, id, file) {
+            this._ffmpeg = ffmpeg;
             this._id = id;
             this._file = file;
             this._previewFilename = null;
-            this._tmpFile = this._ffgui._config.createTempFile(this._id);
+            this._tmpFile = config.createTempFile(this._id);
             this._pr = null;
             this._dar = 0;
             this._duration = 0;
@@ -34,7 +36,7 @@ define('spyl/ffgui/Source', [
                     throw 'cannot create source directory "' + this._tmpFile.getPath() + '"';
                 }
             }
-            this._pr = this._ffgui.getFFmpeg().probe(this._file.getPath());
+            this._pr = this._ffmpeg.probe(this._file.getPath());
             this._duration = Math.floor(parseFloat(this._pr.duration) * 1000);
             if ('start_time' in this._pr) {
                 this._startTime = Math.floor(parseFloat(this._pr.start_time) * 1000);
@@ -55,11 +57,10 @@ define('spyl/ffgui/Source', [
             this._previewFile = this.getFrameFile(1000);
         },
         createPreview : function() {
-            if (! this._previewFile.exists()) {
-                this.extractFrame(1000, this.onPreview, this);
-            } else {
-                this.onPreview(0);
+            if (this._previewFile.exists()) {
+                return Promise.resolve(this._previewFile);
             }
+            return this.extractFrame(1000);
         },
         getDuration : function() {
             return this._duration;
@@ -79,27 +80,29 @@ define('spyl/ffgui/Source', [
         getFrameFile : function(at) {
             return new File(this._tmpFile, 'preview' + Math.floor(at / 100) + '.bmp');
         },
-        extractFrame : function(at, callbackFn, context) {
-            if (typeof context == 'undefined') {
+        extractFrame : function(at) {
+            if (typeof context === 'undefined') {
                 context = this;
             }
             var file = this.getFrameFile(at);
             if (file.exists() && (file.length() > 0)) {
-                callbackFn.call(context);
-                return;
+                return Promise.resolve(file);
             }
-            this._ffgui.getFFmpeg().execute(['-ss', FFmpeg.formatTime(at),
-                                             '-i', this._file.getPath(),
-                                             //'-ss', '0',
-                                             '-f', 'rawvideo', '-vcodec', 'bmp', '-vframes', '1', '-an',
-                                             '-s', this._previewWidth + 'x' + this._previewHeight,
-                                             '-y', file.getPath()], function(exitCode) {
-                if ((exitCode == 0) && (file.length() > 0)) {
-                    callbackFn.call(context);
-                } else {
-                    file.remove();
-                }
-            });
+            return new Promise(function(resolve, reject) {
+                this._ffmpeg.execute(['-ss', FFmpeg.formatTime(at),
+                                      '-i', this._file.getPath(),
+                                      //'-ss', '0',
+                                      '-f', 'rawvideo', '-vcodec', 'bmp', '-vframes', '1', '-an',
+                                      '-s', this._previewWidth + 'x' + this._previewHeight,
+                                      '-y', file.getPath()], function(exitCode) {
+                    if ((exitCode == 0) && (file.length() > 0)) {
+                        resolve(file);
+                    } else {
+                        file.remove();
+                        reject();
+                    }
+                });
+            }, this);
         },
         getId : function() {
             return this._id;
@@ -112,10 +115,6 @@ define('spyl/ffgui/Source', [
         },
         getProbeResult : function() {
             return this._pr;
-        },
-        onPreview : function(event) {
-            Logger.getInstance().debug('onPreview() ' + this._id);
-            this._ffgui.updateSource(this._id, 'preview');
         }
     });
 

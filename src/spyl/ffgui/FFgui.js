@@ -386,12 +386,15 @@ define('spyl/ffgui/FFgui', [
             if (id in this._sources) {
                 return;
             }
-            var source = new Source(this, id, file);
+            var source = new Source(this.getFFmpeg(), this._config, id, file);
             this._sources[id] = source;
             source.prepare();
             this._editTab.addSource(id, source);
             this._sourcesTab.addSource(id, source);
-            source.createPreview();
+            var self = this;
+            source.createPreview().then(function() {
+                self.updateSource(id, 'preview');
+            });
         },
         updateSource : function(id, name) {
             this._editTab.updateSource(id, name);
@@ -597,16 +600,7 @@ define('spyl/ffgui/FFgui', [
                     '"\nDo you want to overwrite it?', 'FFgui',
                     CommonDialog.CONSTANT.MB.OKCANCEL) == CommonDialog.CONSTANT.IDOK);
         },
-        main : function(args) {
-            var tabsFilename = System.getProperty('spyl.ffgui.tabsFilename', 'ffgui.tabs.json');
-            var configFilename = System.getProperty('spyl.ffgui.configFilename', 'ffgui.json');
-            var ui;
-            try {
-                ui = new FFgui(tabsFilename, configFilename);
-            } catch (e) {
-                CommonDialog.messageBox('Cannot load config due to ' + e);
-                throw e;
-            }
+        initFFmpeg : function(ui) {
             try {
                 ui.setFFmpeg(new FFmpeg(ui.getConfig().ffHome));
             } catch (e) {}
@@ -646,6 +640,18 @@ define('spyl/ffgui/FFgui', [
                     throw e;
                 }
             }
+        },
+        main : function(args) {
+            var tabsFilename = System.getProperty('spyl.ffgui.tabsFilename', 'ffgui.tabs.json');
+            var configFilename = System.getProperty('spyl.ffgui.configFilename', 'ffgui.json');
+            var ui;
+            try {
+                ui = new FFgui(tabsFilename, configFilename);
+            } catch (e) {
+                CommonDialog.messageBox('Cannot load config due to ' + e);
+                throw e;
+            }
+            FFgui.initFFmpeg(ui);
             GuiUtilities.invokeLater(function() {
                 ui.createFrame();
                 var args = System.getArguments();

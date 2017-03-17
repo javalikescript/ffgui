@@ -120,10 +120,10 @@ define('spyl/ffgui/EditTab', [
                 return;
             }
             var source = this._source;
-            source.extractFrame(t, function() {
-                var file = source.getFrameFile(t);
-                this._image.setAttribute('image', file.getPath());
-            }, this);
+            var self = this;
+            source.extractFrame(t).done(function(file) {
+                self._image.setAttribute('image', file.getPath());
+            });
         },
         getTime : function() {
             var time = this._timeEdit.getAttribute('text');
@@ -165,13 +165,13 @@ define('spyl/ffgui/EditTab', [
             this._to = to;
             var self = this;
             if (from != null) {
-                source.extractFrame(from, function() {
-                    self._fromImage.setAttribute('image', source.getFrameFile(from).getPath());
+                source.extractFrame(from).done(function(file) {
+                    self._fromImage.setAttribute('image', file.getPath());
                 });
             }
             if (to != null) {
-                source.extractFrame(to, function() {
-                    self._toImage.setAttribute('image', source.getFrameFile(to).getPath());
+                source.extractFrame(to).done(function(file) {
+                    self._toImage.setAttribute('image', file.getPath());
                 });
             }
         },
@@ -366,8 +366,7 @@ define('spyl/ffgui/EditTab', [
         }
     });
 
-    Object.extend(EditTab,
-            {
+    Object.extend(EditTab, {
         DEFAULT_SIZE: (Config.MINIATURE_SIZE + Config.DEFAULT_GAP * 2) + 'px',
         PART_WIDTH: (Config.MINIATURE_SIZE * 2 + Config.DEFAULT_GAP * 3) + 'px',
         SELECT_HEIGHT: (Config.MINIATURE_SIZE + parseInt(Config.DEFAULT_HEIGHT, 10) + Config.DEFAULT_GAP * 3) + 'px',
@@ -375,7 +374,7 @@ define('spyl/ffgui/EditTab', [
         SourceMiniature: SourceMiniature,
         FrameSelect: FrameSelect,
         Part: Part
-            });
+    });
 
     return EditTab;
 });
