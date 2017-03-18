@@ -600,45 +600,48 @@ define('spyl/ffgui/FFgui', [
                     '"\nDo you want to overwrite it?', 'FFgui',
                     CommonDialog.CONSTANT.MB.OKCANCEL) == CommonDialog.CONSTANT.IDOK);
         },
+        askFFmpeg : function() {
+            var result = CommonDialog.messageBox('Does ffmpeg is already installed?', 'FFgui',
+                    CommonDialog.CONSTANT.MB.YESNOCANCEL);
+            switch (result) {
+            case CommonDialog.CONSTANT.IDYES:
+                break;
+            case CommonDialog.CONSTANT.IDNO:
+                if (CommonDialog.messageBox('Do you want to visit ' + FFgui.FFMPEG_URL + '?', 'FFgui',
+                        CommonDialog.CONSTANT.MB.OKCANCEL) == CommonDialog.CONSTANT.IDOK) {
+                    w32Window.shellExecute(FFgui.FFMPEG_URL);
+                } else {
+                    System.out.println('Cancelled by user');
+                }
+                return null;
+            default:
+                System.out.println('Cancelled by user');
+                return null;
+            }
+            var filename = CommonDialog.getOpenFileName();
+            if (! filename) {
+                System.out.println('Cancelled by user');
+                return null;
+            }
+            var file = new File(filename);
+            if (! (file.isFile() && (file.getName() == 'ffmpeg.exe'))) {
+                var message = 'Invalid FFmpeg application: "' + filename + '"';
+                CommonDialog.messageBox(message);
+                throw message;
+            }
+            try {
+                return new FFmpeg(file.getParent());
+            } catch (e) {
+                CommonDialog.messageBox('Cannot create ffmpeg due to ' + e);
+                throw e;
+            }
+        },
         initFFmpeg : function(ui) {
             try {
                 ui.setFFmpeg(new FFmpeg(ui.getConfig().ffHome));
             } catch (e) {}
-
             if (ui.getFFmpeg() == null) {
-                var result = CommonDialog.messageBox('Does ffmpeg is already installed?', 'FFgui',
-                        CommonDialog.CONSTANT.MB.YESNOCANCEL);
-                switch (result) {
-                case CommonDialog.CONSTANT.IDYES:
-                    break;
-                case CommonDialog.CONSTANT.IDNO:
-                    if (CommonDialog.messageBox('Do you want to visit ' + FFgui.FFMPEG_URL + '?', 'FFgui',
-                            CommonDialog.CONSTANT.MB.OKCANCEL) == CommonDialog.CONSTANT.IDOK) {
-                        w32Window.shellExecute(FFgui.FFMPEG_URL);
-                    } else {
-                        System.out.println('Cancelled by user');
-                    }
-                    return;
-                default:
-                    System.out.println('Cancelled by user');
-                return;
-                }
-                var filename = CommonDialog.getOpenFileName();
-                if (! filename) {
-                    System.out.println('Cancelled by user');
-                    return;
-                }
-                var file = new File(filename);
-                if (! (file.isFile() && (file.getName() == 'ffmpeg.exe'))) {
-                    CommonDialog.messageBox('Invalid FFmpeg application: "' + filename + '"');
-                    return;
-                }
-                try {
-                    ui.setFFmpeg(new FFmpeg(file.getParent()));
-                } catch (e) {
-                    CommonDialog.messageBox('Cannot create ffmpeg due to ' + e);
-                    throw e;
-                }
+                ui.setFFmpeg(FFgui.askFFmpeg());
             }
         },
         main : function(args) {

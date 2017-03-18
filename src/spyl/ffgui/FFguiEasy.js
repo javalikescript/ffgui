@@ -106,8 +106,14 @@ define('spyl/ffgui/FFguiEasy', [
         getDuration : function() {
             return this._to - this._from;
         },
-        clone : function() {
-            return new Part(this._source, this._from, this._to);
+        crop : function(from, to) {
+            if (typeof from !== 'number') {
+                from = this._from;
+            }
+            if (typeof to !== 'number') {
+                to = this._to;
+            }
+            return new Part(this._source, from, to);
         },
         cut : function(at, end) {
             var t = this._from + at;
@@ -160,6 +166,10 @@ define('spyl/ffgui/FFguiEasy', [
         getParts : function() {
             return this._parts;
         },
+        setParts : function(parts) {
+            this._parts = parts;
+            return this;
+        },
         getPreviewParts : function() {
             var previews = [];
             var time = 0;
@@ -195,6 +205,27 @@ define('spyl/ffgui/FFguiEasy', [
             return previewPart.extractFrame(at);
         },
         crop : function(from, to) {
+            var parts = [];
+            var time = 0;
+            for (var i = 0; i < this._parts.length; i++) {
+                var part = this._parts[i];
+                var endTime = time + part.getDuration();
+                if (time >= from) {
+                    if (endTime < to) {
+                        parts.push(part);
+                    } else {
+                        parts.push(part.cut(to - time, false));
+                    }
+                } else if (endTime > from) {
+                    if (endTime < to) {
+                        parts.push(part.cut(from - time, true));
+                    } else {
+                        parts.push(part.crop(from - time, to - time));
+                    }
+                }
+                time = endTime;
+            }
+            this.setParts(parts);
         },
         cut : function(from, to) {
             var parts = [];
@@ -202,9 +233,7 @@ define('spyl/ffgui/FFguiEasy', [
             for (var i = 0; i < this._parts.length; i++) {
                 var part = this._parts[i];
                 var endTime = time + part.getDuration();
-                if (from > endTime) {
-                    parts.push(part);
-                } else if (to < time) {
+                if ((from > endTime) || (to < time)) {
                     parts.push(part);
                 } else {
                     if ((from >= time) && (from < endTime)) {
@@ -216,7 +245,7 @@ define('spyl/ffgui/FFguiEasy', [
                 }
                 time = endTime;
             }
-            this._parts = parts;
+            this.setParts(parts);
         }
     });
     
@@ -293,6 +322,9 @@ define('spyl/ffgui/FFguiEasy', [
             var next1sBtn = new Button({attributes: {text: '>'}, style: {width: Config.DEFAULT_WIDTH, height: Config.DEFAULT_HEIGHT, clear: 'right'}}, this);
             var markBtn = new Button({attributes: {text: 'Mark'}, style: {width: '1w', height: Config.DEFAULT_HEIGHT}}, this);
             this._markLabel = new Label({style: {width: '1w', height: Config.DEFAULT_HEIGHT, clear: 'right'}}, this);
+            var cutButton = new Button({attributes: {text: 'Cut'}, style: {width: '1w', height: Config.DEFAULT_TOP_HEIGHT}}, this);
+            var cropButton = new Button({attributes: {text: 'Crop'}, style: {width: '1w', height: Config.DEFAULT_TOP_HEIGHT, clear: 'right'}}, this);
+
             this._timeEdit.observe('change', this.onTimeChange.bind(this));
             previous1sBtn.observe('click', this.moveTime.bind(this, -3000));
             next1sBtn.observe('click', this.moveTime.bind(this, 3000));
@@ -301,6 +333,22 @@ define('spyl/ffgui/FFguiEasy', [
                 self._mark = self.getTime();
                 self._markLabel.setAttribute('text', FFmpeg.formatTime(self._mark));
             });
+            cutButton.observe('click', this.onCut.bind(this));
+            cropButton.observe('click', this.onCrop.bind(this));
+        },
+        onCut : function(event) {
+            var range = this.getRange();
+            Logger.getInstance().info('onCut(' + FFmpeg.formatTime(range.from) +
+                    ' - ' + FFmpeg.formatTime(range.to) + ')');
+            this._partStore.cut(range.from, range.to);
+            this.getParent().updateParts();
+        },
+        onCrop : function(event) {
+            var range = this.getRange();
+            Logger.getInstance().info('onCrop(' + FFmpeg.formatTime(range.from) +
+                    ' - ' + FFmpeg.formatTime(range.to) + ')');
+            this._partStore.crop(range.from, range.to);
+            this.getParent().updateParts();
         },
         updateParts : function() {
             this.updateImageAt(this.getTime());
@@ -355,54 +403,31 @@ define('spyl/ffgui/FFguiEasy', [
         }
     });
     
-    var FFguiEasy = Class.create({
-        initialize : function(configFilename) {
-            this._config = new Config(configFilename);
-            this._config.load({
-                seekDelayMs : -1,
-                ffHome : 'dep/ffmpeg/bin',
-                encodingConfig : {}
-            });
-            this._sourceStore = null;
-            this._partStore = null;
-        },
-        getConfig : function() {
-            return this._config.get();
-        },
-        setFFmpeg : function(ffmpeg) {
-            var config = this.getConfig();
-            if (config.ffHome != ffmpeg.getHome()) {
-                config.ffHome = ffmpeg.getHome();
-                this._config.markAsChanged();
-            }
-            if (false && ! ('ffConfig' in config)) {
-                //config.ffConfig = FFgui.extractEncoders(ffmpeg);
-                this._config.markAsChanged();
-            }
+    var FFguiEasyFrame = Class.create(Frame, {
+        initialize : function($super, config, ffmpeg) {
+            this._config = config;
             this._ffmpeg = ffmpeg;
-        },
-        getFFmpeg : function() {
-            return this._ffmpeg;
-        },
-        createFrame : function() {
-            this._sourceStore = new SourceStore(this.getFFmpeg(), this._config);
+            this._sourceStore = new SourceStore(this._ffmpeg, this._config);
             this._partStore = new PartStore();
-            
             this._icon = w32Image.fromResourceIdentifier(1, w32Image.CONSTANT.IMAGE.ICON);
-            this._frame = new Frame({
+            $super({
                 attributes: {title: 'FFgui', layout: 'jls/gui/BorderLayout', icon: this._icon},
                 style: {visibility: 'hidden', splitSize: 5, width: 800, height: 600}
             });
-            this._frame.observe('unload', this.onUnload.bind(this));
+            this.postInit();
+            this.getStyle().setProperty('visibility', 'visible');
+        },
+        postInit : function() {
+            this.observe('unload', this.onUnload.bind(this));
             this._topPanel = new Panel({
                 style: {hGap: Config.DEFAULT_GAP, vGap: Config.DEFAULT_GAP, border: 1, region: 'top', height: Config.DEFAULT_TOP_HEIGHT + Config.DEFAULT_GAP * 2}
-            }, this._frame);
+            }, this);
             this._partsPanel = new PartsPanel(this._partStore, {
                 style: {hGap: Config.DEFAULT_GAP, vGap: Config.DEFAULT_GAP, border: 1, region: 'center', overflowY: 'scroll'}
-            }, this._frame);
+            }, this);
             this._previewPanel = new PreviewPanel(this._partStore, {
                 style: {hGap: Config.DEFAULT_GAP, vGap: Config.DEFAULT_GAP, border: 1, region: 'left', width: 320, splitter: 'true'}
-            }, this._frame);
+            }, this);
             
             var self = this;
             this._partsPanel.onSelectPart = function(partPanel) {
@@ -412,23 +437,19 @@ define('spyl/ffgui/FFguiEasy', [
             var menuButton = new Button({attributes: {text: 'Menu'}, style: {width: '64px', height: Config.DEFAULT_TOP_HEIGHT}}, this._topPanel);
             var runButton = new Button({attributes: {text: 'Run'}, style: {width: '64px', height: Config.DEFAULT_TOP_HEIGHT}}, this._topPanel);
             var addButton = new Button({attributes: {text: 'Add'}, style: {width: '64px', height: Config.DEFAULT_TOP_HEIGHT}}, this._topPanel);
-            var cutButton = new Button({attributes: {text: 'Cut'}, style: {width: '64px', height: Config.DEFAULT_TOP_HEIGHT}}, this._topPanel);
 
             addButton.observe('click', this.onAddSources.bind(this));
-            cutButton.observe('click', this.onCut.bind(this));
 
             var menuVisible = false;
             menuButton.observe('click', (function() {
                 menuVisible = !menuVisible;
-                this._frame.setMenu(menuVisible ? this._menu : null);
+                this.setMenu(menuVisible ? this._menu : null);
             }).bind(this));
 
             //addSourceButton.observe('click', this._ffgui.onAddSources.bind(this._ffgui));
 
             this._menu = MenuItem.createMenu();
             this._fileMenu = new MenuItem({label: 'File', popup: true}, this._menu);
-            this._frame.getStyle().setProperty('visibility', 'visible');
-            return this._frame;
         },
         onSelectPart : function(partPanel) {
             Logger.getInstance().warn('onSelectPart()');
@@ -463,44 +484,49 @@ define('spyl/ffgui/FFguiEasy', [
                 this.addSourceFile(new File(dir, filenames[i]));
             }
         },
-        onCut : function(event) {
-            var range = this._previewPanel.getRange();
-            Logger.getInstance().info('onCut(' + FFmpeg.formatTime(range.from) +
-                    ' - ' + FFmpeg.formatTime(range.to) + ')');
-            this._partStore.cut(range.from, range.to);
-            this.updateParts();
-        },
-        onAdd : function() {
-        },
         onUnload : function(event) {
             Logger.getInstance().debug('onUnload()');
             this._config.save();
             //this._consoleTab.shutdown();
-            this.getFFmpeg().shutdown();
+            this._ffmpeg.shutdown();
         },
         onExit : function(event) {
             Logger.getInstance().debug('onExit()');
-            if (this._frame == null) {
-                return;
-            }
-            this._frame.onDestroy();
-            this._frame = null;
+            this.onDestroy();
         }
     });
+    
+    var FFguiEasy = Class.create({});
 
     Object.extend(FFguiEasy, {
         main : function(args) {
             System.out.println('Initializing UI...');
             var configFilename = System.getProperty('spyl.ffgui.configFilename', 'ffgui.json');
+            var config, ui; 
+            var ffmpeg = null;
             try {
-                ui = new FFguiEasy(configFilename);
+                config = new Config(configFilename);
+                config.load({
+                    seekDelayMs : -1,
+                    ffHome : 'dep/ffmpeg/bin',
+                    encodingConfig : {}
+                });
+                try {
+                    ffmpeg = new FFmpeg(config.get().ffHome);
+                } catch (e) {
+                    ffmpeg = FFgui.askFFmpeg();
+                    if (ffmpeg == null) {
+                        return;
+                    }
+                    config.get().ffHome = ffmpeg.getHome();
+                    config.markAsChanged();
+                }
             } catch (e) {
                 CommonDialog.messageBox('Cannot initialize due to ' + e);
                 throw e;
             }
-            FFgui.initFFmpeg(ui);
             GuiUtilities.invokeLater(function() {
-                ui.createFrame();
+                ui = new FFguiEasyFrame(config, ffmpeg);
             });
         }
     });
