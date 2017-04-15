@@ -270,10 +270,10 @@ define('spyl/ffgui/FFguiEasy', [
         initialize : function($super, parameters, parent) {
             $super(parameters, parent);
             this._image = new Image({attributes: {width: Config.PART_SIZE}}, this);
-            this._infoLabel = new Label({style: {width: '1w', height: Config.DEFAULT_HEIGHT}}, this);
+            this._infoLabel = new Label({style: {width: '1w', height: FFguiEasy.LABEL_HEIGHT}}, this);
             /*var removeBtn = new Button({
                 attributes: {text: 'x'},
-                style: {width: Config.DEFAULT_HEIGHT, height: Config.DEFAULT_HEIGHT, clear: 'right'}
+                style: {width: FFguiEasy.LABEL_HEIGHT, height: FFguiEasy.LABEL_HEIGHT, clear: 'right'}
             }, this);*/
             this._previewPart = null;
         },
@@ -307,7 +307,7 @@ define('spyl/ffgui/FFguiEasy', [
         },
         addPreviewPart : function(part) {
             var partPanel = new PartPanel({style: {
-                hGap: Config.DEFAULT_GAP, vGap: Config.DEFAULT_GAP, width: '1w', height: Config.PART_SIZE,
+                hGap: FFguiEasy.GAP_SIZE, vGap: FFguiEasy.GAP_SIZE, width: '1w', height: Config.PART_SIZE,
                 verticalAlign: 'middle', verticalPosition: 'middle', border: 1, clear: 'right'
             }}, this);
             partPanel.setPreviewPart(part);
@@ -317,6 +317,7 @@ define('spyl/ffgui/FFguiEasy', [
             });
         },
         onSelectPart : function(partPanel) {
+            // will be overridden
         },
         updateParts : function() {
             this.removeChildren();
@@ -333,26 +334,32 @@ define('spyl/ffgui/FFguiEasy', [
             this._mark = 0;
             this._partStore = partStore;
             $super(TemplateContainer.mergeParameters({
-                style: {hGap: Config.DEFAULT_GAP, vGap: Config.DEFAULT_GAP, textAlign: 'center'}
+                style: {hGap: FFguiEasy.GAP_SIZE, vGap: FFguiEasy.GAP_SIZE, textAlign: 'center', verticalAlign: 'middle'}
             }, parameters), parent);
 
             this._image = new Image({style: {border: true, clear: 'right'}}, this);
+            
+            var fontWidth = Frame.getRootStyle().getPropertyValue('fontWidth');
 
-            this._timeEdit = new Edit({attributes: {text: ''}, style: {width: '1w', height: Config.DEFAULT_HEIGHT, border: 1}}, this);
-            this._endTimeLabel = new Label({style: {width: '1w', height: Config.DEFAULT_HEIGHT, clear: 'right'}}, this);
-            var previous1sBtn = new Button({attributes: {text: '<'}, style: {width: Config.DEFAULT_WIDTH, height: Config.DEFAULT_HEIGHT}}, this);
-            var next1sBtn = new Button({attributes: {text: '>'}, style: {width: Config.DEFAULT_WIDTH, height: Config.DEFAULT_HEIGHT, clear: 'right'}}, this);
+            this._timeEdit = new Edit({attributes: {text: ''}, style: {width: fontWidth * 12, height: FFguiEasy.EDIT_HEIGHT, border: 1}}, this);
+            this._endTimeLabel = new Label({style: {width: fontWidth * 12, height: FFguiEasy.LABEL_HEIGHT, clear: 'right'}}, this);
+            var previous1mBtn = new Button({attributes: {text: '<<'}, style: {width: fontWidth * 4, height: FFguiEasy.BUTTON_HEIGHT}}, this);
+            var previous1sBtn = new Button({attributes: {text: '<'}, style: {width: fontWidth * 3, height: FFguiEasy.BUTTON_HEIGHT}}, this);
+            var next1sBtn = new Button({attributes: {text: '>'}, style: {width: fontWidth * 3, height: FFguiEasy.BUTTON_HEIGHT}}, this);
+            var next1mBtn = new Button({attributes: {text: '>>'}, style: {width: fontWidth * 4, height: FFguiEasy.BUTTON_HEIGHT, clear: 'right'}}, this);
 
             this._timeEdit.observe('change', this.onTimeChange.bind(this));
+            previous1mBtn.observe('click', this.moveTime.bind(this, -60000));
             previous1sBtn.observe('click', this.moveTime.bind(this, -3000));
             next1sBtn.observe('click', this.moveTime.bind(this, 3000));
+            next1mBtn.observe('click', this.moveTime.bind(this, 60000));
 
-            var cutButton = new Button({attributes: {text: 'Cut'}, style: {width: '1w', height: Config.DEFAULT_HEIGHT, clear: 'right'}}, this);
+            var cutButton = new Button({attributes: {text: 'Cut'}, style: {width: '1w', height: FFguiEasy.BUTTON_HEIGHT, clear: 'right'}}, this);
 
-            this._markLabel = new Label({style: {width: '1w', height: Config.DEFAULT_HEIGHT}}, this);
-            var markBtn = new Button({attributes: {text: 'Mark'}, style: {width: '1w', height: Config.DEFAULT_HEIGHT, clear: 'right'}}, this);
-            var removeSelectionButton = new Button({attributes: {text: 'Remove from mark'}, style: {width: '1w', height: Config.DEFAULT_HEIGHT}}, this);
-            var keepSelectionButton = new Button({attributes: {text: 'Keep from mark'}, style: {width: '1w', height: Config.DEFAULT_HEIGHT, clear: 'right'}}, this);
+            this._markLabel = new Label({style: {width: '1w', height: FFguiEasy.LABEL_HEIGHT}}, this);
+            var markBtn = new Button({attributes: {text: 'Mark'}, style: {width: '1w', height: FFguiEasy.BUTTON_HEIGHT, clear: 'right'}}, this);
+            var removeSelectionButton = new Button({attributes: {text: 'Remove from mark'}, style: {width: '1w', height: FFguiEasy.BUTTON_HEIGHT}}, this);
+            var keepSelectionButton = new Button({attributes: {text: 'Keep from mark'}, style: {width: '1w', height: FFguiEasy.BUTTON_HEIGHT, clear: 'right'}}, this);
 
             markBtn.observe('click', this.mark.bind(this));
             cutButton.observe('click', this.onCut.bind(this));
@@ -457,11 +464,14 @@ define('spyl/ffgui/FFguiEasy', [
         },
         postInit : function() {
             this.observe('unload', this.onUnload.bind(this));
+            var topButtonHeight = '2em';
+            var fontWidth = Frame.getRootStyle().getPropertyValue('fontWidth');
+            var topButtonWidth = fontWidth * 10;
             this._topPanel = new Panel({
-                style: {hGap: Config.DEFAULT_GAP, vGap: Config.DEFAULT_GAP, border: 1, region: 'top', height: Config.DEFAULT_TOP_HEIGHT + Config.DEFAULT_GAP * 2}
+                style: {hGap: FFguiEasy.GAP_SIZE, vGap: FFguiEasy.GAP_SIZE, border: 1, region: 'top', height: 'calc(' + topButtonHeight + '+' + (FFguiEasy.GAP_SIZE*2+2) + ')'}
             }, this);
             this._partsPanel = new PartsPanel(this._partStore, {
-                style: {hGap: Config.DEFAULT_GAP, vGap: Config.DEFAULT_GAP, border: 1, region: 'center', overflowY: 'scroll'}
+                style: {hGap: FFguiEasy.GAP_SIZE, vGap: FFguiEasy.GAP_SIZE, border: 1, region: 'center', overflowY: 'scroll'}
             }, this);
             this._previewPanel = new PreviewPanel(this._partStore, {
                 style: {border: 1, region: 'left', width: 320, splitter: 'true'}
@@ -472,9 +482,10 @@ define('spyl/ffgui/FFguiEasy', [
                 self.onSelectPart(partPanel);
             };
 
-            var menuButton = new Button({attributes: {text: 'Menu'}, style: {width: '64px', height: Config.DEFAULT_TOP_HEIGHT}}, this._topPanel);
-            var runButton = new Button({attributes: {text: 'Run'}, style: {width: '64px', height: Config.DEFAULT_TOP_HEIGHT}}, this._topPanel);
-            var addButton = new Button({attributes: {text: 'Add'}, style: {width: '64px', height: Config.DEFAULT_TOP_HEIGHT}}, this._topPanel);
+            var menuButton = new Button({attributes: {text: 'Menu'}, style: {width: topButtonWidth, height: topButtonHeight}}, this._topPanel);
+            var runButton = new Button({attributes: {text: 'Run'}, style: {width: topButtonWidth, height: topButtonHeight}}, this._topPanel);
+            var addButton = new Button({attributes: {text: 'Add'}, style: {width: topButtonWidth, height: topButtonHeight}}, this._topPanel);
+            //Logger.getInstance().info('font size: ' + Frame.getRootStyle().getPropertyValue('fontSize') + ', top panel height: ' + this._topPanel.getH() + ', button height: ' + menuButton.getH());
 
             addButton.observe('click', this.onAddSources.bind(this));
 
@@ -491,6 +502,7 @@ define('spyl/ffgui/FFguiEasy', [
         },
         onSelectPart : function(partPanel) {
             Logger.getInstance().warn('onSelectPart()');
+            partPanel.getStyle().setProperty('border', 0);
             this._previewPanel.setTime(partPanel.getPreviewPart().getOffset());
         },
         updateParts : function() {
@@ -540,6 +552,10 @@ define('spyl/ffgui/FFguiEasy', [
     var FFguiEasy = Class.create({});
 
     Object.extend(FFguiEasy, {
+        LABEL_HEIGHT: '1em',
+        EDIT_HEIGHT: '1.3em',
+        BUTTON_HEIGHT: '1.5em',
+        GAP_SIZE: 3,
         main : function(args) {
             System.out.println('Initializing UI...');
             var configFilename = System.getProperty('spyl.ffgui.configFilename', 'ffgui.json');

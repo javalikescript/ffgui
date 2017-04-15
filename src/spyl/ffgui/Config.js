@@ -147,10 +147,9 @@ define('spyl/ffgui/Config', [
         MINIATURE_SIZE: 144, // 144 108 96
         PART_SIZE: 48,
         DEFAULT_GAP: 3,
-        DEFAULT_TOP_HEIGHT: 32,
-        DEFAULT_WIDTH: '33px',
         DEFAULT_HEIGHT: '22px',
         DEFAULT_HEIGHT_LARGE: '44px',
+        DEFAULT_WIDTH: '33px',
         DEFAULT_LABEL_WIDTH: '160px'
     });
 
