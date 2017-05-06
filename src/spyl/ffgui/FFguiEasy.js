@@ -6,6 +6,7 @@ define('spyl/ffgui/FFguiEasy', [
   'jls/lang/Promise',
   'jls/io/File',
   'jls/gui/Frame',
+  'jls/gui/Tab',
   'jls/gui/Panel',
   'jls/gui/Label',
   'jls/gui/Edit',
@@ -21,7 +22,8 @@ define('spyl/ffgui/FFguiEasy', [
   'spyl/ffgui/Config',
   'spyl/ffgui/Source',
   'spyl/ffgui/FFmpeg',
-  'spyl/ffgui/FFgui'
+  'spyl/ffgui/FFgui',
+  'spyl/ffgui/ArgumentTab'
 ], function (
   Class,
   Exception,
@@ -30,6 +32,7 @@ define('spyl/ffgui/FFguiEasy', [
   Promise,
   File,
   Frame,
+  Tab,
   Panel,
   Label,
   Edit,
@@ -45,7 +48,8 @@ define('spyl/ffgui/FFguiEasy', [
   Config,
   Source,
   FFmpeg,
-  FFgui
+  FFgui,
+  ArgumentTab
 ) {
 
     var SourceStore = Class.create({
@@ -354,10 +358,10 @@ define('spyl/ffgui/FFguiEasy', [
             next1sBtn.observe('click', this.moveTime.bind(this, 3000));
             next1mBtn.observe('click', this.moveTime.bind(this, 60000));
 
+            new Label({attributes: {text: 'Edition:'}, style: {width: '1w', height: FFguiEasy.LABEL_HEIGHT, clear: 'right'}}, this);
             var cutButton = new Button({attributes: {text: 'Cut'}, style: {width: '1w', height: FFguiEasy.BUTTON_HEIGHT, clear: 'right'}}, this);
-
-            this._markLabel = new Label({style: {width: '1w', height: FFguiEasy.LABEL_HEIGHT}}, this);
-            var markBtn = new Button({attributes: {text: 'Mark'}, style: {width: '1w', height: FFguiEasy.BUTTON_HEIGHT, clear: 'right'}}, this);
+            var markBtn = new Button({attributes: {text: 'Set mark'}, style: {width: '1w', height: FFguiEasy.BUTTON_HEIGHT}}, this);
+            this._markLabel = new Label({style: {width: '1w', height: FFguiEasy.LABEL_HEIGHT, clear: 'right'}}, this);
             var removeSelectionButton = new Button({attributes: {text: 'Remove from mark'}, style: {width: '1w', height: FFguiEasy.BUTTON_HEIGHT}}, this);
             var keepSelectionButton = new Button({attributes: {text: 'Keep from mark'}, style: {width: '1w', height: FFguiEasy.BUTTON_HEIGHT, clear: 'right'}}, this);
 
@@ -372,11 +376,17 @@ define('spyl/ffgui/FFguiEasy', [
         },
         onRemoveSelection : function(event) {
             var range = this.getRange();
+            if (range.from === range.to) {
+                return;
+            }
             this._partStore.removeRange(range.from, range.to);
             this.getParent().updateParts();
         },
         onKeepSelection : function(event) {
             var range = this.getRange();
+            if (range.from === range.to) {
+                return;
+            }
             this._partStore.keepRange(range.from, range.to);
             this.getParent().updateParts();
         },
@@ -448,19 +458,65 @@ define('spyl/ffgui/FFguiEasy', [
         }
     });
     
+    var FFmpegConfigFrame = Class.create(Frame, {
+        initialize : function($super, configTabs) {
+            $super({
+                attributes: {title: 'FFmpeg Parameters', clientSize: true, hideOnClose: true, layout: 'jls/gui/CardLayout', icon: FFguiEasy.ICON},
+                style: {visibility: 'hidden', splitSize: 5, width: 800, height: 600}
+            });
+            this._tab = new Tab({attributes: {selectOnAdd: false}}, this);
+            this._tabs = {};
+            for (var key in configTabs) {
+                this._tabs[key] = new ArgumentTab(configTabs[key], this._tab);
+            }
+        },
+        loadTabs : function(tabs) {
+            if (tabs) {
+                for (var key in tabs) {
+                    if (key in this._tabs) {
+                        this._tabs[key].load(tabs[key]);
+                    }
+                }
+            }
+        },
+        saveTabs : function() {
+            var tabs = {};
+            for (var key in this._tabs) {
+                var tab = this._tabs[key];
+                tabs[key] = tab.save();
+            }
+            return tabs;
+        },
+        resetTabs : function() {
+            for (var key in this._tabs) {
+                var tab = this._tabs[key];
+                if ('reset' in tab) {
+                    tab.reset();
+                }
+            }
+        },
+        getTabsOptions : function() {
+            var options = [];
+            for (var key in this._tabs) {
+                this._tabs[key].appendOptions(options);
+            }
+            return options;
+        }
+    });
+    
     var FFguiEasyFrame = Class.create(Frame, {
-        initialize : function($super, config, ffmpeg) {
+        initialize : function($super, config, configTabs, ffmpeg) {
             this._config = config;
             this._ffmpeg = ffmpeg;
             this._sourceStore = new SourceStore(this._ffmpeg, this._config);
             this._partStore = new PartStore();
-            this._icon = w32Image.fromResourceIdentifier(1, w32Image.CONSTANT.IMAGE.ICON);
             $super({
-                attributes: {title: 'FFgui', layout: 'jls/gui/BorderLayout', icon: this._icon},
+                attributes: {title: 'FFgui', layout: 'jls/gui/BorderLayout', icon: FFguiEasy.ICON},
                 style: {visibility: 'hidden', splitSize: 5, width: 800, height: 600}
             });
             this.postInit();
             this.getStyle().setProperty('visibility', 'visible');
+            this._fmpegConfigFrame = new FFmpegConfigFrame(configTabs);
         },
         postInit : function() {
             this.observe('unload', this.onUnload.bind(this));
@@ -483,6 +539,7 @@ define('spyl/ffgui/FFguiEasy', [
             };
 
             var menuButton = new Button({attributes: {text: 'Menu'}, style: {width: topButtonWidth, height: topButtonHeight}}, this._topPanel);
+            var ffmpegConfigButton = new Button({attributes: {text: 'FFmpeg'}, style: {width: topButtonWidth, height: topButtonHeight}}, this._topPanel);
             var runButton = new Button({attributes: {text: 'Run'}, style: {width: topButtonWidth, height: topButtonHeight}}, this._topPanel);
             var addButton = new Button({attributes: {text: 'Add'}, style: {width: topButtonWidth, height: topButtonHeight}}, this._topPanel);
             //Logger.getInstance().info('font size: ' + Frame.getRootStyle().getPropertyValue('fontSize') + ', top panel height: ' + this._topPanel.getH() + ', button height: ' + menuButton.getH());
@@ -490,10 +547,13 @@ define('spyl/ffgui/FFguiEasy', [
             addButton.observe('click', this.onAddSources.bind(this));
 
             var menuVisible = false;
-            menuButton.observe('click', (function() {
+            menuButton.observe('click', function() {
                 menuVisible = !menuVisible;
-                this.setMenu(menuVisible ? this._menu : null);
-            }).bind(this));
+                self.setMenu(menuVisible ? self._menu : null);
+            });
+            ffmpegConfigButton.observe('click', function() {
+                self._fmpegConfigFrame.getStyle().setProperty('visibility', 'visible');
+            });
 
             //addSourceButton.observe('click', this._ffgui.onAddSources.bind(this._ffgui));
 
@@ -542,6 +602,7 @@ define('spyl/ffgui/FFguiEasy', [
             this._config.save();
             //this._consoleTab.shutdown();
             this._ffmpeg.shutdown();
+            this._fmpegConfigFrame.onDestroy();
         },
         onExit : function(event) {
             Logger.getInstance().debug('onExit()');
@@ -556,10 +617,12 @@ define('spyl/ffgui/FFguiEasy', [
         EDIT_HEIGHT: '1.3em',
         BUTTON_HEIGHT: '1.5em',
         GAP_SIZE: 3,
+        ICON: w32Image.fromResourceIdentifier(1, w32Image.CONSTANT.IMAGE.ICON),
         main : function(args) {
             System.out.println('Initializing UI...');
             var configFilename = System.getProperty('spyl.ffgui.configFilename', 'ffgui.json');
-            var config, ui; 
+            var tabsFilename = System.getProperty('spyl.ffgui.tabsFilename', 'ffgui.tabs.json');
+            var config, ui, configTabs; 
             var ffmpeg = null;
             try {
                 config = new Config(configFilename);
@@ -578,12 +641,14 @@ define('spyl/ffgui/FFguiEasy', [
                     config.get().ffHome = ffmpeg.getHome();
                     config.markAsChanged();
                 }
+                var tabsFile = new File(tabsFilename);
+                configTabs = Config.loadJSON(tabsFile);
             } catch (e) {
                 CommonDialog.messageBox('Cannot initialize due to ' + e);
                 throw e;
             }
             GuiUtilities.invokeLater(function() {
-                ui = new FFguiEasyFrame(config, ffmpeg);
+                ui = new FFguiEasyFrame(config, configTabs, ffmpeg);
                 var args = System.getArguments();
                 var i = 0, start = false;
                 while ((i < args.length) && (args[i].indexOf('-') == 0)) {
