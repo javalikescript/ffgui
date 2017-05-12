@@ -274,10 +274,10 @@ define('spyl/ffgui/FFguiEasy', [
         initialize : function($super, parameters, parent) {
             $super(parameters, parent);
             this._image = new Image({attributes: {width: Config.PART_SIZE}}, this);
-            this._infoLabel = new Label({style: {width: '1w', height: FFguiEasy.LABEL_HEIGHT}}, this);
+            this._infoLabel = new Label({style: {width: '1w', height: Config.LABEL_HEIGHT}}, this);
             /*var removeBtn = new Button({
                 attributes: {text: 'x'},
-                style: {width: FFguiEasy.LABEL_HEIGHT, height: FFguiEasy.LABEL_HEIGHT, clear: 'right'}
+                style: {width: Config.LABEL_HEIGHT, height: Config.LABEL_HEIGHT, clear: 'right'}
             }, this);*/
             this._previewPart = null;
         },
@@ -311,7 +311,7 @@ define('spyl/ffgui/FFguiEasy', [
         },
         addPreviewPart : function(part) {
             var partPanel = new PartPanel({style: {
-                hGap: FFguiEasy.GAP_SIZE, vGap: FFguiEasy.GAP_SIZE, width: '1w', height: Config.PART_SIZE,
+                hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, width: '1w', height: Config.PART_SIZE,
                 verticalAlign: 'middle', verticalPosition: 'middle', border: 1, clear: 'right'
             }}, this);
             partPanel.setPreviewPart(part);
@@ -338,19 +338,19 @@ define('spyl/ffgui/FFguiEasy', [
             this._mark = 0;
             this._partStore = partStore;
             $super(TemplateContainer.mergeParameters({
-                style: {hGap: FFguiEasy.GAP_SIZE, vGap: FFguiEasy.GAP_SIZE, textAlign: 'center', verticalAlign: 'middle'}
+                style: {hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, textAlign: 'center', verticalAlign: 'middle'}
             }, parameters), parent);
 
             this._image = new Image({style: {border: true, clear: 'right'}}, this);
             
             var fontWidth = Frame.getRootStyle().getPropertyValue('fontWidth');
 
-            this._timeEdit = new Edit({attributes: {text: ''}, style: {width: fontWidth * 12, height: FFguiEasy.EDIT_HEIGHT, border: 1}}, this);
-            this._endTimeLabel = new Label({style: {width: fontWidth * 12, height: FFguiEasy.LABEL_HEIGHT, clear: 'right'}}, this);
-            var previous1mBtn = new Button({attributes: {text: '<<'}, style: {width: fontWidth * 4, height: FFguiEasy.BUTTON_HEIGHT}}, this);
-            var previous1sBtn = new Button({attributes: {text: '<'}, style: {width: fontWidth * 3, height: FFguiEasy.BUTTON_HEIGHT}}, this);
-            var next1sBtn = new Button({attributes: {text: '>'}, style: {width: fontWidth * 3, height: FFguiEasy.BUTTON_HEIGHT}}, this);
-            var next1mBtn = new Button({attributes: {text: '>>'}, style: {width: fontWidth * 4, height: FFguiEasy.BUTTON_HEIGHT, clear: 'right'}}, this);
+            this._timeEdit = new Edit({attributes: {text: ''}, style: {width: fontWidth * 12, height: Config.EDIT_HEIGHT, border: 1}}, this);
+            this._endTimeLabel = new Label({style: {width: fontWidth * 12, height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
+            var previous1mBtn = new Button({attributes: {text: '<<'}, style: {width: fontWidth * 4, height: Config.BUTTON_HEIGHT}}, this);
+            var previous1sBtn = new Button({attributes: {text: '<'}, style: {width: fontWidth * 3, height: Config.BUTTON_HEIGHT}}, this);
+            var next1sBtn = new Button({attributes: {text: '>'}, style: {width: fontWidth * 3, height: Config.BUTTON_HEIGHT}}, this);
+            var next1mBtn = new Button({attributes: {text: '>>'}, style: {width: fontWidth * 4, height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
 
             this._timeEdit.observe('change', this.onTimeChange.bind(this));
             previous1mBtn.observe('click', this.moveTime.bind(this, -60000));
@@ -358,12 +358,12 @@ define('spyl/ffgui/FFguiEasy', [
             next1sBtn.observe('click', this.moveTime.bind(this, 3000));
             next1mBtn.observe('click', this.moveTime.bind(this, 60000));
 
-            new Label({attributes: {text: 'Edition:'}, style: {width: '1w', height: FFguiEasy.LABEL_HEIGHT, clear: 'right'}}, this);
-            var cutButton = new Button({attributes: {text: 'Cut'}, style: {width: '1w', height: FFguiEasy.BUTTON_HEIGHT, clear: 'right'}}, this);
-            var markBtn = new Button({attributes: {text: 'Set mark'}, style: {width: '1w', height: FFguiEasy.BUTTON_HEIGHT}}, this);
-            this._markLabel = new Label({style: {width: '1w', height: FFguiEasy.LABEL_HEIGHT, clear: 'right'}}, this);
-            var removeSelectionButton = new Button({attributes: {text: 'Remove from mark'}, style: {width: '1w', height: FFguiEasy.BUTTON_HEIGHT}}, this);
-            var keepSelectionButton = new Button({attributes: {text: 'Keep from mark'}, style: {width: '1w', height: FFguiEasy.BUTTON_HEIGHT, clear: 'right'}}, this);
+            new Label({attributes: {text: 'Edition:'}, style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
+            var cutButton = new Button({attributes: {text: 'Cut'}, style: {width: '1w', height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
+            var markBtn = new Button({attributes: {text: 'Set mark'}, style: {width: '1w', height: Config.BUTTON_HEIGHT}}, this);
+            this._markLabel = new Label({style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
+            var removeSelectionButton = new Button({attributes: {text: 'Remove from mark'}, style: {width: '1w', height: Config.BUTTON_HEIGHT}}, this);
+            var keepSelectionButton = new Button({attributes: {text: 'Keep from mark'}, style: {width: '1w', height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
 
             markBtn.observe('click', this.mark.bind(this));
             cutButton.observe('click', this.onCut.bind(this));
@@ -459,16 +459,63 @@ define('spyl/ffgui/FFguiEasy', [
     });
     
     var FFmpegConfigFrame = Class.create(Frame, {
-        initialize : function($super, configTabs) {
+        initialize : function($super, config, configTabs) {
+            this._config = config;
+            this._tabs = {};
             $super({
-                attributes: {title: 'FFmpeg Parameters', clientSize: true, hideOnClose: true, layout: 'jls/gui/CardLayout', icon: FFguiEasy.ICON},
-                style: {visibility: 'hidden', splitSize: 5, width: 800, height: 600}
+                attributes: {title: 'FFmpeg Parameters', hideOnClose: true, layout: 'jls/gui/CardLayout', icon: FFguiEasy.ICON},
+                style: {visibility: 'hidden', hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, width: 640, height: 480}
             });
             this._tab = new Tab({attributes: {selectOnAdd: false}}, this);
-            this._tabs = {};
+            this._template = new Panel({attributes: {title: 'Template'}, style: {hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE}}, this._tab);
+            new Label({attributes: {text: 'Encoding Template'}, style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this._template);
+            this._configCB = new ComboBox({style: {width: '2w', height: Config.COMBO_HEIGHT, border: 1}}, this._template);
+            var loadConfig = new Button({attributes: {text: 'Load'}, style: {width: '1w', height: Config.BUTTON_HEIGHT}}, this._template);
+            var saveConfig = new Button({attributes: {text: 'Save'}, style: {width: '1w', height: Config.BUTTON_HEIGHT}}, this._template);
+            var deleteConfig = new Button({attributes: {text: 'Delete'}, style: {width: '1w', height: Config.BUTTON_HEIGHT}}, this._template);
+            var clearConfig = new Button({attributes: {text: 'Clear'}, style: {width: '1w', height: Config.BUTTON_HEIGHT, clear: 'right'}}, this._template);
+            new Label({attributes: {text: 'Additional options'}, style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this._template);
+            this._optionsEdit = new Edit({attributes: {text: ''}, style: {width: '1w', height: Config.EDIT_HEIGHT, border: 1, clear: 'right'}}, this._template);
             for (var key in configTabs) {
                 this._tabs[key] = new ArgumentTab(configTabs[key], this._tab);
             }
+            this._configCB.addChildren(Object.keys(this._config.get().encodingConfig));
+
+            loadConfig.observe('click', this.onLoadConfig.bind(this));
+            saveConfig.observe('click', this.onSaveConfig.bind(this));
+            deleteConfig.observe('click', this.onDeleteConfig.bind(this));
+            clearConfig.observe('click', this.onClearConfig.bind(this));
+        },
+        loadConfig : function(name) {
+            var encodingConfig = this._config.get().encodingConfig;
+            if (! (name in encodingConfig)) {
+                return;
+            }
+            Logger.getInstance().info('Load encoding configuration "' + name + '"');
+            this.loadTabs(encodingConfig[name]);
+        },
+        onLoadConfig : function(event) {
+            var name = this._configCB.getAttribute('text');
+            Logger.getInstance().debug('onLoadConfig(' + name + ')');
+            this.loadConfig(name);
+        },
+        onClearConfig : function(event) {
+            this.resetTabs();
+        },
+        onDeleteConfig : function(event) {
+            var name = this._configCB.getAttribute('text');
+            var encodingConfig = this._config.get().encodingConfig;
+            if (name && (name in encodingConfig)) {
+                delete encodingConfig[name];
+                this._config.markAsChanged();
+            }
+            Logger.getInstance().info('Encoding configuration "' + name + '" removed');
+        },
+        onSaveConfig : function(event) {
+            var name = this._configCB.getAttribute('text');
+            this._config.get().encodingConfig[name] = this.saveTabs();
+            this._config.markAsChanged();
+            Logger.getInstance().info('Encoding configuration "' + name + '" updated');
         },
         loadTabs : function(tabs) {
             if (tabs) {
@@ -515,19 +562,22 @@ define('spyl/ffgui/FFguiEasy', [
                 style: {visibility: 'hidden', splitSize: 5, width: 800, height: 600}
             });
             this.postInit();
-            this.getStyle().setProperty('visibility', 'visible');
-            this._fmpegConfigFrame = new FFmpegConfigFrame(configTabs);
+            var self = this;
+            GuiUtilities.invokeLater(function() {
+                self.getStyle().setProperty('visibility', 'visible');
+            });
+            this._fmpegConfigFrame = new FFmpegConfigFrame(this._config, configTabs);
         },
         postInit : function() {
             this.observe('unload', this.onUnload.bind(this));
             var topButtonHeight = '2em';
             var fontWidth = Frame.getRootStyle().getPropertyValue('fontWidth');
-            var topButtonWidth = fontWidth * 10;
+            var topButtonWidth = fontWidth * 12;
             this._topPanel = new Panel({
-                style: {hGap: FFguiEasy.GAP_SIZE, vGap: FFguiEasy.GAP_SIZE, border: 1, region: 'top', height: 'calc(' + topButtonHeight + '+' + (FFguiEasy.GAP_SIZE*2+2) + ')'}
+                style: {hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, border: 1, region: 'top', height: 'calc(' + topButtonHeight + '+' + (Config.GAP_SIZE*2+2) + ')'}
             }, this);
             this._partsPanel = new PartsPanel(this._partStore, {
-                style: {hGap: FFguiEasy.GAP_SIZE, vGap: FFguiEasy.GAP_SIZE, border: 1, region: 'center', overflowY: 'scroll'}
+                style: {hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, border: 1, region: 'center', overflowY: 'scroll'}
             }, this);
             this._previewPanel = new PreviewPanel(this._partStore, {
                 style: {border: 1, region: 'left', width: 320, splitter: 'true'}
@@ -539,7 +589,7 @@ define('spyl/ffgui/FFguiEasy', [
             };
 
             var menuButton = new Button({attributes: {text: 'Menu'}, style: {width: topButtonWidth, height: topButtonHeight}}, this._topPanel);
-            var ffmpegConfigButton = new Button({attributes: {text: 'FFmpeg'}, style: {width: topButtonWidth, height: topButtonHeight}}, this._topPanel);
+            var ffmpegConfigButton = new Button({attributes: {text: 'Parameters'}, style: {width: topButtonWidth, height: topButtonHeight}}, this._topPanel);
             var runButton = new Button({attributes: {text: 'Run'}, style: {width: topButtonWidth, height: topButtonHeight}}, this._topPanel);
             var addButton = new Button({attributes: {text: 'Add'}, style: {width: topButtonWidth, height: topButtonHeight}}, this._topPanel);
             //Logger.getInstance().info('font size: ' + Frame.getRootStyle().getPropertyValue('fontSize') + ', top panel height: ' + this._topPanel.getH() + ', button height: ' + menuButton.getH());
@@ -561,7 +611,7 @@ define('spyl/ffgui/FFguiEasy', [
             this._fileMenu = new MenuItem({label: 'File', popup: true}, this._menu);
         },
         onSelectPart : function(partPanel) {
-            Logger.getInstance().warn('onSelectPart()');
+            Logger.getInstance().debug('onSelectPart()');
             partPanel.getStyle().setProperty('border', 0);
             this._previewPanel.setTime(partPanel.getPreviewPart().getOffset());
         },
@@ -613,13 +663,10 @@ define('spyl/ffgui/FFguiEasy', [
     var FFguiEasy = Class.create({});
 
     Object.extend(FFguiEasy, {
-        LABEL_HEIGHT: '1em',
-        EDIT_HEIGHT: '1.3em',
-        BUTTON_HEIGHT: '1.5em',
-        GAP_SIZE: 3,
         ICON: w32Image.fromResourceIdentifier(1, w32Image.CONSTANT.IMAGE.ICON),
         main : function(args) {
             System.out.println('Initializing UI...');
+            // Show splash will loading?
             var configFilename = System.getProperty('spyl.ffgui.configFilename', 'ffgui.json');
             var tabsFilename = System.getProperty('spyl.ffgui.tabsFilename', 'ffgui.tabs.json');
             var config, ui, configTabs; 

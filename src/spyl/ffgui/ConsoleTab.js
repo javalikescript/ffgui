@@ -49,7 +49,7 @@ define('spyl/ffgui/ConsoleTab', [
         },
         createPane : function() {
             this._panel = new Panel({attributes: {title: 'Console', layout: 'jls/gui/BorderLayout'}, style: {splitSize: 5}}, this._parent);
-            this._topPanel = new Panel({style: {height: (parseInt(Config.DEFAULT_HEIGHT, 10) + Config.DEFAULT_GAP * 2), region: 'top', textAlign: 'left', verticalAlign: 'middle', verticalPosition: 'middle', hGap: Config.DEFAULT_GAP, vGap: Config.DEFAULT_GAP}}, this._panel);
+            this._topPanel = new Panel({style: {height: (parseInt(Config.DEFAULT_HEIGHT, 10) + Config.GAP_SIZE * 2), region: 'top', textAlign: 'left', verticalAlign: 'middle', verticalPosition: 'middle', hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE}}, this._panel);
             //this._label = new Edit({attributes: {text: '', readonly: true}, style: {width: '1w', height: Config.DEFAULT_HEIGHT, border: 1}}, this._topPanel);
             this._label = new Label({attributes: {text: ''}, style: {width: '1w', height: Config.DEFAULT_HEIGHT}}, this._topPanel);
             this._consoleTA = new TextArea({attributes: {readonly: true}, style: {fontFamily: 'Courier New', fontSize: 14, border: 1, overflow: 'scroll', region: 'center'}}, this._panel);

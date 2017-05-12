@@ -202,17 +202,17 @@ define('spyl/ffgui/EditTab', [
 
             this._panel = new Panel({attributes: {title: 'Edit', layout: 'jls/gui/BorderLayout'}, style: {splitSize: 5}}, this._parent);
             //, overflow: 'scroll'
-            this._srcPanel = new Panel({style: {hGap: Config.DEFAULT_GAP, vGap: Config.DEFAULT_GAP, height: EditTab.DEFAULT_SIZE, verticalAlign: 'middle', region: 'top', splitter: 'true', overflowY: 'scroll'}}, this._panel);
+            this._srcPanel = new Panel({style: {hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, height: EditTab.DEFAULT_SIZE, verticalAlign: 'middle', region: 'top', splitter: 'true', overflowY: 'scroll'}}, this._panel);
             var addSourceBtn = new Button({attributes: {text: 'Add Sources'}, style: {width: Config.MINIATURE_SIZE + 'px', height: Math.floor(Config.MINIATURE_SIZE * 2 /3) + 'px'}}, this._srcPanel);
 
             this._editPanel = new Panel({attributes: {title: 'Edit', layout: 'jls/gui/BorderLayout'}, style: {splitSize: 5, region: 'center'}}, this._panel);
-            var selPanel = new Panel({style: {hGap: Config.DEFAULT_GAP, vGap: 0, height: EditTab.SELECT_PANEL_HEIGHT, border: 1, region: 'top'}}, this._editPanel);
-            this._fromFrame = new FrameSelect({style: {hGap: Config.DEFAULT_GAP, vGap: Config.DEFAULT_GAP, width: '1w', height: EditTab.SELECT_HEIGHT, textAlign: 'center'}}, selPanel);
-            this._toFrame = new FrameSelect({style: {hGap: Config.DEFAULT_GAP, vGap: Config.DEFAULT_GAP, width: '1w', height: EditTab.SELECT_HEIGHT, textAlign: 'center', clear: 'right'}}, selPanel);
+            var selPanel = new Panel({style: {hGap: Config.GAP_SIZE, vGap: 0, height: EditTab.SELECT_PANEL_HEIGHT, border: 1, region: 'top'}}, this._editPanel);
+            this._fromFrame = new FrameSelect({style: {hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, width: '1w', height: EditTab.SELECT_HEIGHT, textAlign: 'center'}}, selPanel);
+            this._toFrame = new FrameSelect({style: {hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, width: '1w', height: EditTab.SELECT_HEIGHT, textAlign: 'center', clear: 'right'}}, selPanel);
             this._addBtn = new Button({attributes: {text: 'Add'}, style: {width: '1w', height: Config.DEFAULT_HEIGHT}}, selPanel);
             this._updateBtn = new Button({attributes: {text: 'Update'}, style: {width: '1w', height: Config.DEFAULT_HEIGHT}}, selPanel);
             this._removeBtn = new Button({attributes: {text: 'Remove'}, style: {width: '1w', height: Config.DEFAULT_HEIGHT}}, selPanel);
-            this._partPanel = new Panel({style: {hGap: Config.DEFAULT_GAP, vGap: Config.DEFAULT_GAP, region: 'center'}}, this._editPanel);
+            this._partPanel = new Panel({style: {hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, region: 'center'}}, this._editPanel);
 
             addSourceBtn.observe('click', this._ffgui.onAddSources.bind(this._ffgui));
             this._addBtn.setEnabled(false);
@@ -246,7 +246,7 @@ define('spyl/ffgui/EditTab', [
             this._selectedPart = null;
         },
         addPart : function(source, from, to) {
-            this._selectedPart = new Part({style: {hGap: Config.DEFAULT_GAP, vGap: Config.DEFAULT_GAP, width: EditTab.PART_WIDTH, height: EditTab.DEFAULT_SIZE, verticalAlign: 'middle', verticalPosition: 'middle', border: 1}}, this._partPanel);
+            this._selectedPart = new Part({style: {hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, width: EditTab.PART_WIDTH, height: EditTab.DEFAULT_SIZE, verticalAlign: 'middle', verticalPosition: 'middle', border: 1}}, this._partPanel);
             this._selectedPart.updatePart(source, from, to);
             this._selectedPart.observe('click', this.onSelectPart.bind(this));
             this._addBtn.setEnabled(true);
@@ -367,10 +367,10 @@ define('spyl/ffgui/EditTab', [
     });
 
     Object.extend(EditTab, {
-        DEFAULT_SIZE: (Config.MINIATURE_SIZE + Config.DEFAULT_GAP * 2) + 'px',
-        PART_WIDTH: (Config.MINIATURE_SIZE * 2 + Config.DEFAULT_GAP * 3) + 'px',
-        SELECT_HEIGHT: (Config.MINIATURE_SIZE + parseInt(Config.DEFAULT_HEIGHT, 10) + Config.DEFAULT_GAP * 3) + 'px',
-        SELECT_PANEL_HEIGHT: (Config.MINIATURE_SIZE + parseInt(Config.DEFAULT_HEIGHT, 10) * 2 + Config.DEFAULT_GAP * 4) + 'px',
+        DEFAULT_SIZE: (Config.MINIATURE_SIZE + Config.GAP_SIZE * 2) + 'px',
+        PART_WIDTH: (Config.MINIATURE_SIZE * 2 + Config.GAP_SIZE * 3) + 'px',
+        SELECT_HEIGHT: (Config.MINIATURE_SIZE + parseInt(Config.DEFAULT_HEIGHT, 10) + Config.GAP_SIZE * 3) + 'px',
+        SELECT_PANEL_HEIGHT: (Config.MINIATURE_SIZE + parseInt(Config.DEFAULT_HEIGHT, 10) * 2 + Config.GAP_SIZE * 4) + 'px',
         SourceMiniature: SourceMiniature,
         FrameSelect: FrameSelect,
         Part: Part

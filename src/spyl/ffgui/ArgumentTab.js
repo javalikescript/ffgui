@@ -8,6 +8,7 @@ define('spyl/ffgui/ArgumentTab', [
   'jls/gui/Edit',
   'jls/gui/CheckBox',
   'jls/gui/ComboBox',
+  'jls/gui/FlowLayout',
   'spyl/ffgui/Config'
 ], function (
   Class,
@@ -19,11 +20,11 @@ define('spyl/ffgui/ArgumentTab', [
   Edit,
   CheckBox,
   ComboBox,
+  FlowLayout,
   Config
 ) {
 
-    var ArgumentTab;
-    ArgumentTab = Class.create({
+    var ArgumentTab = Class.create({
         initialize : function(config, parent) {
             this._parent = parent;
             this._config = config;
@@ -41,7 +42,10 @@ define('spyl/ffgui/ArgumentTab', [
             if (('title' in this._config) && (typeof this._config.title == 'string')) {
                 title = this._config.title;
             }
-            this._panel = new Panel({attributes: {title: title}, style: {hGap: Config.DEFAULT_GAP, vGap: Config.DEFAULT_GAP}}, this._parent);
+            this._panel = new Panel({
+                attributes: {title: title},
+                style: {hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, verticalAlign: 'middle', overflowY: 'scroll'}
+            }, this._parent);
             ArgumentTab.addArguments(this._config.arguments, this._panel, this._arguments);
             if (('optionArgument' in this._config) && ('options' in this._config)) {
                 var optionArgument = this._config.optionArgument;
@@ -52,7 +56,9 @@ define('spyl/ffgui/ArgumentTab', [
             }
         },
         createOptionPane : function(element) {
-            this._optionPanel = new Panel({style: {hGap: Config.DEFAULT_GAP, vGap: Config.DEFAULT_GAP, width: '1w', height: Config.DEFAULT_HEIGHT, clear: 'right'}}, this._panel);
+            this._optionPanel = new Panel({
+                style: {hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, verticalAlign: 'middle', width: '1w', height: Config.DEFAULT_HEIGHT, clear: 'right'}
+            }, this._panel);
             this._optionElement = element;
             this._optionElement.observe('change', this.onOptionChange.bind(this));
         },
@@ -63,7 +69,8 @@ define('spyl/ffgui/ArgumentTab', [
             if (value in this._config.options) {
                 this._optionValue = value;
                 var args = this._config.options[value].arguments;
-                var height = (parseInt(Config.DEFAULT_HEIGHT) + Config.DEFAULT_GAP) * args.length + Config.DEFAULT_GAP;
+                var argHeight = FlowLayout.computeSizeFor(this._optionPanel, Config.COMBO_HEIGHT);
+                var height = (argHeight + Config.GAP_SIZE) * args.length + Config.GAP_SIZE;
                 Logger.getInstance().debug('ArgumentTab.onOptionChange() height: ' + height);
                 this._optionPanel.getStyle().setProperty('height', height + 'px');
                 this._optionPanel.getParent().update(); // if size changed
@@ -106,8 +113,7 @@ define('spyl/ffgui/ArgumentTab', [
         }
     });
 
-    Object.extend(ArgumentTab,
-            {
+    Object.extend(ArgumentTab, {
         loadArguments : function(args, map, obj) {
             for (var i = 0; i < args.length; i++) {
                 var arg = args[i];
@@ -193,18 +199,18 @@ define('spyl/ffgui/ArgumentTab', [
                 var label = arg.label + ' (' + arg.name + ')';
                 if (arg.noValue) {
                     // TODO selected: true
-                    elem = new CheckBox({attributes: {text: label}, style: {width: '1w', height: Config.DEFAULT_HEIGHT, clear: 'right'}}, parent);
+                    elem = new CheckBox({attributes: {text: label}, style: {width: '1w', height: Config.EDIT_HEIGHT, clear: 'right'}}, parent);
                 } else if ('map' in arg) {
-                    new Label({attributes: {text: label}, style: {width: Config.DEFAULT_LABEL_WIDTH, height: Config.DEFAULT_HEIGHT}}, parent);
-                    elem = new ComboBox({style: {width: '1w', height: Config.DEFAULT_HEIGHT, border: 1, clear: 'right'}}, parent);
+                    new Label({attributes: {text: label}, style: {width: Config.DEFAULT_LABEL_WIDTH, height: Config.LABEL_HEIGHT}}, parent);
+                    elem = new ComboBox({style: {width: '1w', height: Config.COMBO_HEIGHT, border: 1, clear: 'right'}}, parent);
                     elem.addChildren(Object.keys(arg.map));
                 } else if ('values' in arg) {
-                    new Label({attributes: {text: label}, style: {width: Config.DEFAULT_LABEL_WIDTH, height: Config.DEFAULT_HEIGHT}}, parent);
-                    elem = new ComboBox({style: {width: '1w', height: Config.DEFAULT_HEIGHT, border: 1, clear: 'right'}}, parent);
+                    new Label({attributes: {text: label}, style: {width: Config.DEFAULT_LABEL_WIDTH, height: Config.LABEL_HEIGHT}}, parent);
+                    elem = new ComboBox({style: {width: '1w', height: Config.COMBO_HEIGHT, border: 1, clear: 'right'}}, parent);
                     elem.addChildren(arg.values);
                 } else {
-                    new Label({attributes: {text: label}, style: {width: Config.DEFAULT_LABEL_WIDTH, height: Config.DEFAULT_HEIGHT}}, parent);
-                    elem = new Edit({attributes: {text: ''}, style: {width: '1w', height: Config.DEFAULT_HEIGHT, clear: 'right'}}, parent);
+                    new Label({attributes: {text: label}, style: {width: Config.DEFAULT_LABEL_WIDTH, height: Config.LABEL_HEIGHT}}, parent);
+                    elem = new Edit({attributes: {text: ''}, style: {width: '1w', height: Config.EDIT_HEIGHT, border: 1, clear: 'right'}}, parent);
                 }
                 if ('value' in arg) {
                     elem.setAttribute('text', arg.value);
@@ -212,7 +218,7 @@ define('spyl/ffgui/ArgumentTab', [
                 map[arg.name] = elem;
             }
         }
-            });
+    });
 
     return ArgumentTab;
 });

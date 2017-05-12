@@ -37,9 +37,9 @@ define('spyl/ffgui/DestinationTab', [
         },
         createPane : function() {
             this._panel = new Panel({attributes: {title: 'Destination', layout: 'jls/gui/BorderLayout'}, style: {splitSize: 5}}, this._parent);
-            var topPanel = new Panel({style: {height: (parseInt(Config.DEFAULT_HEIGHT_LARGE, 10) + Config.DEFAULT_GAP * 2), region: 'top', hGap: Config.DEFAULT_GAP, vGap: Config.DEFAULT_GAP}}, this._panel);
-            var centerPanel = new Panel({style: {region: 'center', hGap: Config.DEFAULT_GAP, vGap: Config.DEFAULT_GAP}}, this._panel);
-            var bottomPanel = new Panel({style: {height: (parseInt(Config.DEFAULT_HEIGHT_LARGE, 10) + Config.DEFAULT_GAP * 2), region: 'bottom', hGap: Config.DEFAULT_GAP, vGap: Config.DEFAULT_GAP}}, this._panel);
+            var topPanel = new Panel({style: {height: (parseInt(Config.DEFAULT_HEIGHT_LARGE, 10) + Config.GAP_SIZE * 2), region: 'top', hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE}}, this._panel);
+            var centerPanel = new Panel({style: {region: 'center', hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE}}, this._panel);
+            var bottomPanel = new Panel({style: {height: (parseInt(Config.DEFAULT_HEIGHT_LARGE, 10) + Config.GAP_SIZE * 2), region: 'bottom', hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE}}, this._panel);
 
             var openProjectButton = new Button({attributes: {text: 'Open Project...'}, style: {width: '1w', height: Config.DEFAULT_HEIGHT_LARGE}}, topPanel);
             var saveProjectButton = new Button({attributes: {text: 'Save Project'}, style: {width: '1w', height: Config.DEFAULT_HEIGHT_LARGE}}, topPanel);
