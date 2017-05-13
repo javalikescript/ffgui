@@ -404,94 +404,23 @@ define('spyl/ffgui/FFgui', [
             this.updateSource(id, 'remove');
             delete this._sources[id];
         },
-        createCommand : function(part, filename, tabsOptions) {
-            var destOptions = [];
-            var srcOptions = [];
-            /*
-             * '-ss position (input/output)'
-             * When used as an input option (before -i), seeks in this input file to position.
-             * When used as an output option (before an output filename), decodes but discards input until the timestamps reach position.
-             * This is slower, but more accurate. position may be either in seconds or in hh:mm:ss[.xxx] form.
-             */
-            if (part.from != null) {
-                var delay = this.getSeekDelayMs();
-                if ((delay >= 0) && (delay < part.from)) {
-                    srcOptions.push('-ss', FFmpeg.formatTime(part.from - delay));
-                    destOptions.push('-ss', Math.floor(delay / 1000).toString());
-                } else if (delay === -1) {
-                    srcOptions.push('-ss', FFmpeg.formatTime(part.from));
-                } else {
-                    destOptions.push('-ss', FFmpeg.formatTime(part.from));
-                }
-            }
-            /*
-             * '-to position (output)'
-             * Stop writing the output at position. position may be a number in seconds, or in hh:mm:ss[.xxx] form.
-             * -to and -t are mutually exclusive and -t has priority.
-             */
-            /*
-             * '-vframes number (output)'
-             * Set the number of video frames to record. This is an alias for -frames:v. 
-             */
-            if (part.to != null) {
-                if (part.from != null) {
-                    destOptions.push('-t', FFmpeg.formatTime(part.to - part.from));
-                    //destOptions.push('-to', FFmpeg.formatTime(part.to));
-                } else {
-                    destOptions.push('-t', FFmpeg.formatTime(part.to));
-                }
-            }
-            destOptions = destOptions.concat(tabsOptions);
-            return this.getFFmpeg().computeArguments(filename, destOptions, part.source.getFile().getPath(), srcOptions);
-        },
         startTranscoding : function() {
             var filename = this._destinationTab._fileEdit.getAttribute('text');
             if (! FFgui.canOverwriteFile(filename)) {
                 return;
             }
             Logger.getInstance().info('starting...');
-            var commands = [];
             var tabsOptions = this.getTabsOptions();
             var addOptionsText = this._destinationTab._optionsEdit.getAttribute('text');
             if (addOptionsText) {
                 Array.prototype.push.apply(tabsOptions, addOptionsText.split(/\s+/));
             }
-            var parts = this._editTab.computeParts();
-            if (parts.length == 0) {
-                return;
-            } else if (parts.length == 1) {
-                commands.push({
-                    line: this.createCommand(parts[0], filename, tabsOptions),
-                    name: 'Processing "' + filename + '"',
-                    showStandardError: true
-                });
-            } else {
-                var concatScript = '# ffgui';
-                for (var i = 0; i < parts.length; i++) {
-                    var partName = 'part_' + i + '.tmp';
-                    var outFilename = this._config.createTempFilename(partName);
-                    commands.push({
-                        line: this.createCommand(parts[i], outFilename, tabsOptions),
-                        name: 'Processing part ' + (i+1) + '/' + parts.length,
-                        showStandardError: true
-                    });
-                    var concatPartname = outFilename.replace(/\\/g, '/');
-                    //var concatPartname = partName; // to be safe
-                    concatScript += '\nfile ' + concatPartname;
-                }
-                var concatFilename = this._config.createTempFilename('concat.txt');
-                var concatFile = new File(concatFilename);
-                var output = new OutputStreamWriter(new FileOutputStream(concatFile), 'UTF-8');
-                output.write(concatScript);
-                output.close();
-                commands.push({
-                    line: this.getFFmpeg().computeArguments(filename, ['-c', 'copy'], concatFilename, ['-f', 'concat', '-safe', '0']),
-                    name: 'Concat "' + filename + '"',
-                    showStandardError: true
-                });
+            var commands = FFgui.createCommands(this._config, this.getFFmpeg(), filename,
+                    this._editTab.computeParts(), tabsOptions, this.getSeekDelayMs());
+            if (commands.length > 0) {
+                this._destinationTab.onStarted();
+                this._consoleTab.run(commands, this.transcodingEnded, this);
             }
-            this._destinationTab.onStarted();
-            this._consoleTab.run(commands, this.transcodingEnded, this);
         },
         stopTranscoding : function() {
             Logger.getInstance().debug('stopping...');
@@ -643,6 +572,81 @@ define('spyl/ffgui/FFgui', [
             if (ui.getFFmpeg() == null) {
                 ui.setFFmpeg(FFgui.askFFmpeg());
             }
+        },
+        createCommand : function(ffmpeg, part, filename, tabsOptions, seekDelayMs) {
+            var destOptions = [];
+            var srcOptions = [];
+            /*
+             * '-ss position (input/output)'
+             * When used as an input option (before -i), seeks in this input file to position.
+             * When used as an output option (before an output filename), decodes but discards input until the timestamps reach position.
+             * This is slower, but more accurate. position may be either in seconds or in hh:mm:ss[.xxx] form.
+             */
+            if (part.from != null) {
+                var delay = seekDelayMs || 0;
+                if ((delay >= 0) && (delay < part.from)) {
+                    srcOptions.push('-ss', FFmpeg.formatTime(part.from - delay));
+                    destOptions.push('-ss', Math.floor(delay / 1000).toString());
+                } else if (delay === -1) {
+                    srcOptions.push('-ss', FFmpeg.formatTime(part.from));
+                } else {
+                    destOptions.push('-ss', FFmpeg.formatTime(part.from));
+                }
+            }
+            /*
+             * '-to position (output)'
+             * Stop writing the output at position. position may be a number in seconds, or in hh:mm:ss[.xxx] form.
+             * -to and -t are mutually exclusive and -t has priority.
+             */
+            /*
+             * '-vframes number (output)'
+             * Set the number of video frames to record. This is an alias for -frames:v. 
+             */
+            if (part.to != null) {
+                if (part.from != null) {
+                    destOptions.push('-t', FFmpeg.formatTime(part.to - part.from));
+                    //destOptions.push('-to', FFmpeg.formatTime(part.to));
+                } else {
+                    destOptions.push('-t', FFmpeg.formatTime(part.to));
+                }
+            }
+            destOptions = destOptions.concat(tabsOptions);
+            return ffmpeg.computeArguments(filename, destOptions, part.source.getFile().getPath(), srcOptions);
+        },
+        createCommands : function(config, ffmpeg, filename, parts, tabsOptions, seekDelayMs) {
+            var commands = [];
+            if (parts.length == 1) {
+                commands.push({
+                    line: FFgui.createCommand(ffmpeg, parts[0], filename, tabsOptions, seekDelayMs),
+                    name: 'Processing "' + filename + '"',
+                    showStandardError: true
+                });
+            } else if (parts.length > 1) {
+                var concatScript = '# ffgui';
+                for (var i = 0; i < parts.length; i++) {
+                    var partName = 'part_' + i + '.tmp';
+                    var outFilename = config.createTempFilename(partName);
+                    commands.push({
+                        line: FFgui.createCommand(ffmpeg, parts[i], outFilename, tabsOptions, seekDelayMs),
+                        name: 'Processing part ' + (i+1) + '/' + parts.length,
+                        showStandardError: true
+                    });
+                    var concatPartname = outFilename.replace(/\\/g, '/');
+                    //var concatPartname = partName; // to be safe
+                    concatScript += '\nfile ' + concatPartname;
+                }
+                var concatFilename = config.createTempFilename('concat.txt');
+                var concatFile = new File(concatFilename);
+                var output = new OutputStreamWriter(new FileOutputStream(concatFile), 'UTF-8');
+                output.write(concatScript);
+                output.close();
+                commands.push({
+                    line: ffmpeg.computeArguments(filename, ['-c', 'copy'], concatFilename, ['-f', 'concat', '-safe', '0']),
+                    name: 'Concat "' + filename + '"',
+                    showStandardError: true
+                });
+            }
+            return commands;
         },
         main : function(args) {
             var tabsFilename = System.getProperty('spyl.ffgui.tabsFilename', 'ffgui.tabs.json');

@@ -5,6 +5,8 @@ define('spyl/ffgui/FFguiEasy', [
   'jls/lang/Logger',
   'jls/lang/Promise',
   'jls/io/File',
+  'jls/io/FileOutputStream',
+  'jls/io/OutputStreamWriter',
   'jls/gui/Frame',
   'jls/gui/Tab',
   'jls/gui/Panel',
@@ -31,6 +33,8 @@ define('spyl/ffgui/FFguiEasy', [
   Logger,
   Promise,
   File,
+  FileOutputStream,
+  OutputStreamWriter,
   Frame,
   Tab,
   Panel,
@@ -330,6 +334,19 @@ define('spyl/ffgui/FFguiEasy', [
                 var preview = previews[i];
                 this.addPreviewPart(preview);
             }
+        },
+        computeParts : function() {
+            var computedParts = [];
+            var parts = this._partStore.getParts();
+            for (var i = 0; i < parts.length; i++) {
+                var part = parts[i];
+                computedParts.push({
+                    from: part.getFrom(),
+                    to: part.getTo(),
+                    source: part.getSource()
+                });
+            }
+            return computedParts;
         }
     });
     
@@ -547,6 +564,10 @@ define('spyl/ffgui/FFguiEasy', [
             for (var key in this._tabs) {
                 this._tabs[key].appendOptions(options);
             }
+            var addOptionsText = this._optionsEdit.getAttribute('text');
+            if (addOptionsText) {
+                Array.prototype.push.apply(options, addOptionsText.split(/\s+/));
+            }
             return options;
         }
     });
@@ -589,12 +610,13 @@ define('spyl/ffgui/FFguiEasy', [
             };
 
             var menuButton = new Button({attributes: {text: 'Menu'}, style: {width: topButtonWidth, height: topButtonHeight}}, this._topPanel);
+            var addButton = new Button({attributes: {text: 'Add...'}, style: {width: topButtonWidth, height: topButtonHeight}}, this._topPanel);
             var ffmpegConfigButton = new Button({attributes: {text: 'Parameters'}, style: {width: topButtonWidth, height: topButtonHeight}}, this._topPanel);
-            var runButton = new Button({attributes: {text: 'Run'}, style: {width: topButtonWidth, height: topButtonHeight}}, this._topPanel);
-            var addButton = new Button({attributes: {text: 'Add'}, style: {width: topButtonWidth, height: topButtonHeight}}, this._topPanel);
+            var runButton = new Button({attributes: {text: 'Export as...'}, style: {width: topButtonWidth, height: topButtonHeight}}, this._topPanel);
             //Logger.getInstance().info('font size: ' + Frame.getRootStyle().getPropertyValue('fontSize') + ', top panel height: ' + this._topPanel.getH() + ', button height: ' + menuButton.getH());
 
             addButton.observe('click', this.onAddSources.bind(this));
+            runButton.observe('click', this.onRun.bind(this));
 
             var menuVisible = false;
             menuButton.observe('click', function() {
@@ -631,7 +653,7 @@ define('spyl/ffgui/FFguiEasy', [
             this.addSourceFile(new File(filename), id);
         },
         onAddSources : function(event) {
-            var filenames = CommonDialog.getOpenFileName(this._panel,
+            var filenames = CommonDialog.getOpenFileName(this,
                     CommonDialog.OFN_LONGNAMES | CommonDialog.OFN_NOCHANGEDIR | CommonDialog.OFN_EXPLORER | CommonDialog.OFN_ALLOWMULTISELECT);
             if (! filenames || (filenames.length == 0)) {
                 return;
@@ -646,6 +668,38 @@ define('spyl/ffgui/FFguiEasy', [
             for (var i = 1; i < filenames.length; i++) {
                 this.addSourceFile(new File(dir, filenames[i]));
             }
+        },
+        onRun : function(event) {
+            Logger.getInstance().debug('onRun()');
+            var filename = CommonDialog.getSaveFileName(this, true);
+            if (! filename) {
+                return;
+            }
+            var seekDelayMs = 0;
+            var parts = this._partsPanel.computeParts();
+            var commands = FFgui.createCommands(this._config, this._ffmpeg, filename, parts,
+                    this._fmpegConfigFrame.getTabsOptions(), seekDelayMs);
+            var batchFilename = this._config.createTempFilename('ffgui.bat');
+            var batchFile = new File(batchFilename);
+            var output = new OutputStreamWriter(new FileOutputStream(batchFile));
+            output.writeLine('REM FFgui batch file');
+            for (var i = 0; i < commands.length; i++) {
+                var command = commands[i];
+                Logger.getInstance().debug(command.line.join(' '));
+                var line;
+                for (var j = 0; j < command.line.length; j++) {
+                    var argument = FFguiEasy.escapeArgument(command.line[j]);
+                    if (j === 0) {
+                        line = argument;
+                    } else {
+                        line += ' ' + argument;
+                    }
+                }
+                output.writeLine(line);
+            }
+            output.writeLine('PAUSE');
+            output.close();
+            w32Window.shellExecute(batchFilename);
         },
         onUnload : function(event) {
             Logger.getInstance().debug('onUnload()');
@@ -664,6 +718,12 @@ define('spyl/ffgui/FFguiEasy', [
 
     Object.extend(FFguiEasy, {
         ICON: w32Image.fromResourceIdentifier(1, w32Image.CONSTANT.IMAGE.ICON),
+        escapeArgument : function(value) {
+            if (value.indexOf(' ') >= 0) {
+                return '"' + value + '"';
+            }
+            return value;
+        },
         main : function(args) {
             System.out.println('Initializing UI...');
             // Show splash will loading?
