@@ -145,7 +145,7 @@ define('spyl/ffgui/Config', [
             return StringCodec.hexEncode(buffer);
         },
         MINIATURE_SIZE: 144, // 144 108 96
-        PART_SIZE: 48,
+        PART_SIZE: '3em',
         GAP_SIZE: 3,
         BUTTON_HEIGHT: '1.5em',
         COMBO_HEIGHT: '1.5em',

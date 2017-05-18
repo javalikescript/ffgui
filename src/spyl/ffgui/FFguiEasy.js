@@ -19,6 +19,7 @@ define('spyl/ffgui/FFguiEasy', [
   'jls/gui/CommonDialog',
   'jls/gui/GuiUtilities',
   'jls/gui/TemplateContainer',
+  'jls/gui/FlowLayout',
   'jls/win32/Window',
   'jls/win32/Image',
   'spyl/ffgui/Config',
@@ -47,6 +48,7 @@ define('spyl/ffgui/FFguiEasy', [
   CommonDialog,
   GuiUtilities,
   TemplateContainer,
+  FlowLayout,
   w32Window,
   w32Image,
   Config,
@@ -277,7 +279,7 @@ define('spyl/ffgui/FFguiEasy', [
     var PartPanel = Class.create(Panel, {
         initialize : function($super, parameters, parent) {
             $super(parameters, parent);
-            this._image = new Image({attributes: {width: Config.PART_SIZE}}, this);
+            this._image = new Image({attributes: {width: Config.PART_SIZE_PX}}, this);
             this._infoLabel = new Label({style: {width: '1w', height: Config.LABEL_HEIGHT}}, this);
             /*var removeBtn = new Button({
                 attributes: {text: 'x'},
@@ -291,7 +293,7 @@ define('spyl/ffgui/FFguiEasy', [
                 return;
             }
             var self = this;
-            previewPart.getSource().extractFrame(0).done(function(file) {
+            previewPart.extractFrame(previewPart.getOffset()).done(function(file) {
                 self._image.setAttribute('image', file.getPath());
             });
             this._infoLabel.setAttribute('text', 'At ' + FFmpeg.formatTime(previewPart.getOffset()) + ', Duration ' + FFmpeg.formatTime(previewPart.getDuration()));
@@ -315,7 +317,7 @@ define('spyl/ffgui/FFguiEasy', [
         },
         addPreviewPart : function(part) {
             var partPanel = new PartPanel({style: {
-                hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, width: '1w', height: Config.PART_SIZE,
+                hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, width: '1w', height: Config.PART_SIZE_PX,
                 verticalAlign: 'middle', verticalPosition: 'middle', border: 1, clear: 'right'
             }}, this);
             partPanel.setPreviewPart(part);
@@ -360,14 +362,12 @@ define('spyl/ffgui/FFguiEasy', [
 
             this._image = new Image({style: {border: true, clear: 'right'}}, this);
             
-            var fontWidth = Frame.getRootStyle().getPropertyValue('fontWidth');
-
-            this._timeEdit = new Edit({attributes: {text: ''}, style: {width: fontWidth * 12, height: Config.EDIT_HEIGHT, border: 1}}, this);
-            this._endTimeLabel = new Label({style: {width: fontWidth * 12, height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
-            var previous1mBtn = new Button({attributes: {text: '<<'}, style: {width: fontWidth * 4, height: Config.BUTTON_HEIGHT}}, this);
-            var previous1sBtn = new Button({attributes: {text: '<'}, style: {width: fontWidth * 3, height: Config.BUTTON_HEIGHT}}, this);
-            var next1sBtn = new Button({attributes: {text: '>'}, style: {width: fontWidth * 3, height: Config.BUTTON_HEIGHT}}, this);
-            var next1mBtn = new Button({attributes: {text: '>>'}, style: {width: fontWidth * 4, height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
+            this._timeEdit = new Edit({attributes: {text: ''}, style: {width: '12fw', height: Config.EDIT_HEIGHT, border: 1}}, this);
+            this._endTimeLabel = new Label({style: {width: '12fw', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
+            var previous1mBtn = new Button({attributes: {text: '<<'}, style: {width: '4fw', height: Config.BUTTON_HEIGHT}}, this);
+            var previous1sBtn = new Button({attributes: {text: '<'}, style: {width: '3fw', height: Config.BUTTON_HEIGHT}}, this);
+            var next1sBtn = new Button({attributes: {text: '>'}, style: {width: '3fw', height: Config.BUTTON_HEIGHT}}, this);
+            var next1mBtn = new Button({attributes: {text: '>>'}, style: {width: '4fw', height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
 
             this._timeEdit.observe('change', this.onTimeChange.bind(this));
             previous1mBtn.observe('click', this.moveTime.bind(this, -60000));
@@ -382,10 +382,19 @@ define('spyl/ffgui/FFguiEasy', [
             var removeSelectionButton = new Button({attributes: {text: 'Remove from mark'}, style: {width: '1w', height: Config.BUTTON_HEIGHT}}, this);
             var keepSelectionButton = new Button({attributes: {text: 'Keep from mark'}, style: {width: '1w', height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
 
+            new Label({attributes: {text: 'Encoding:'}, style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
+            var ffmpegConfigButton = new Button({attributes: {text: 'Parameters'}, style: {width: '1w', height: Config.BUTTON_HEIGHT}}, this);
+            var runButton = new Button({attributes: {text: 'Export as...'}, style: {width: '1w', height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
+
             markBtn.observe('click', this.mark.bind(this));
             cutButton.observe('click', this.onCut.bind(this));
             removeSelectionButton.observe('click', this.onRemoveSelection.bind(this));
             keepSelectionButton.observe('click', this.onKeepSelection.bind(this));
+
+            ffmpegConfigButton.observe('click', function() {
+                parent.getFFmpegConfigFrame().getStyle().setProperty('visibility', 'visible');
+            });
+            runButton.observe('click', this.onRun.bind(this));
         },
         onCut : function(event) {
             this._partStore.cut(this.getTime());
@@ -406,6 +415,38 @@ define('spyl/ffgui/FFguiEasy', [
             }
             this._partStore.keepRange(range.from, range.to);
             this.getParent().updateParts();
+        },
+        onRun : function(event) {
+            Logger.getInstance().debug('onRun()');
+            var filename = CommonDialog.getSaveFileName(this, true);
+            if (! filename) {
+                return;
+            }
+            var seekDelayMs = 0;
+            var parts = this.getParent().getPartsPanel().computeParts();
+            var commands = FFgui.createCommands(this._config, this._ffmpeg, filename, parts,
+                    this.getParent().getFFmpegConfigFrame().getTabsOptions(), seekDelayMs);
+            var batchFilename = this._config.createTempFilename('ffgui.bat');
+            var batchFile = new File(batchFilename);
+            var output = new OutputStreamWriter(new FileOutputStream(batchFile));
+            output.writeLine('REM FFgui batch file');
+            for (var i = 0; i < commands.length; i++) {
+                var command = commands[i];
+                Logger.getInstance().debug(command.line.join(' '));
+                var line;
+                for (var j = 0; j < command.line.length; j++) {
+                    var argument = FFguiEasy.escapeArgument(command.line[j]);
+                    if (j === 0) {
+                        line = argument;
+                    } else {
+                        line += ' ' + argument;
+                    }
+                }
+                output.writeLine(line);
+            }
+            output.writeLine('PAUSE');
+            output.close();
+            w32Window.shellExecute(batchFilename);
         },
         updateParts : function() {
             var duration = this._partStore.getDuration();
@@ -589,17 +630,37 @@ define('spyl/ffgui/FFguiEasy', [
             });
             this._fmpegConfigFrame = new FFmpegConfigFrame(this._config, configTabs);
         },
+        getConfig : function() {
+            return this._config;
+        },
+        getFFmpeg : function() {
+            return this._ffmpeg;
+        },
+        getSourceStore : function() {
+            return this._sourceStore;
+        },
+        getPartStore : function() {
+            return this._partStore;
+        },
+        getFFmpegConfigFrame : function() {
+            return this._fmpegConfigFrame;
+        },
         postInit : function() {
             this.observe('unload', this.onUnload.bind(this));
+            Config.PART_SIZE_PX = FlowLayout.computeSizeFor(this, 'calc(' + Config.PART_SIZE + '+' + (Config.GAP_SIZE*2+2) + ')');
             var topButtonHeight = '2em';
-            var fontWidth = Frame.getRootStyle().getPropertyValue('fontWidth');
-            var topButtonWidth = fontWidth * 12;
-            this._topPanel = new Panel({
+            var topPanel = new Panel({
                 style: {hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, border: 1, region: 'top', height: 'calc(' + topButtonHeight + '+' + (Config.GAP_SIZE*2+2) + ')'}
             }, this);
+            var centerPanel = new Panel({
+                attributes: {layout: 'jls/gui/BorderLayout'}, style: {region: 'center'}
+            }, this);
+            var partsToolPanel = new Panel({
+                style: {hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, region: 'top', height: 'calc(' + topButtonHeight + '+' + (Config.GAP_SIZE*2+2) + ')'}
+            }, centerPanel);
             this._partsPanel = new PartsPanel(this._partStore, {
                 style: {hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, border: 1, region: 'center', overflowY: 'scroll'}
-            }, this);
+            }, centerPanel);
             this._previewPanel = new PreviewPanel(this._partStore, {
                 style: {border: 1, region: 'left', width: 320, splitter: 'true'}
             }, this);
@@ -609,28 +670,38 @@ define('spyl/ffgui/FFguiEasy', [
                 self.onSelectPart(partPanel);
             };
 
-            var menuButton = new Button({attributes: {text: 'Menu'}, style: {width: topButtonWidth, height: topButtonHeight}}, this._topPanel);
-            var addButton = new Button({attributes: {text: 'Add...'}, style: {width: topButtonWidth, height: topButtonHeight}}, this._topPanel);
-            var ffmpegConfigButton = new Button({attributes: {text: 'Parameters'}, style: {width: topButtonWidth, height: topButtonHeight}}, this._topPanel);
-            var runButton = new Button({attributes: {text: 'Export as...'}, style: {width: topButtonWidth, height: topButtonHeight}}, this._topPanel);
-            //Logger.getInstance().info('font size: ' + Frame.getRootStyle().getPropertyValue('fontSize') + ', top panel height: ' + this._topPanel.getH() + ', button height: ' + menuButton.getH());
+            var menuButton = new Button({attributes: {text: 'Menu'}, style: {width: '12fw', height: topButtonHeight}}, topPanel);
+            var addButton = new Button({attributes: {text: 'Add...'}, style: {width: '12fw', height: topButtonHeight}}, partsToolPanel);
 
             addButton.observe('click', this.onAddSources.bind(this));
-            runButton.observe('click', this.onRun.bind(this));
 
             var menuVisible = false;
             menuButton.observe('click', function() {
                 menuVisible = !menuVisible;
                 self.setMenu(menuVisible ? self._menu : null);
             });
-            ffmpegConfigButton.observe('click', function() {
-                self._fmpegConfigFrame.getStyle().setProperty('visibility', 'visible');
-            });
 
             //addSourceButton.observe('click', this._ffgui.onAddSources.bind(this._ffgui));
 
             this._menu = MenuItem.createMenu();
             this._fileMenu = new MenuItem({label: 'File', popup: true}, this._menu);
+        },
+        onAddSources : function(event) {
+            var filenames = CommonDialog.getOpenFileName(this,
+                    CommonDialog.OFN_LONGNAMES | CommonDialog.OFN_NOCHANGEDIR | CommonDialog.OFN_EXPLORER | CommonDialog.OFN_ALLOWMULTISELECT);
+            if (! filenames || (filenames.length == 0)) {
+                return;
+            }
+            var dir = new File(filenames[0]);
+            if (filenames.length == 1) {
+                this.addSourceFile(dir);
+            }
+            if (! dir.exists()) {
+                return;
+            }
+            for (var i = 1; i < filenames.length; i++) {
+                this.addSourceFile(new File(dir, filenames[i]));
+            }
         },
         onSelectPart : function(partPanel) {
             Logger.getInstance().debug('onSelectPart()');
@@ -651,55 +722,6 @@ define('spyl/ffgui/FFguiEasy', [
         },
         addSource : function(filename, id) {
             this.addSourceFile(new File(filename), id);
-        },
-        onAddSources : function(event) {
-            var filenames = CommonDialog.getOpenFileName(this,
-                    CommonDialog.OFN_LONGNAMES | CommonDialog.OFN_NOCHANGEDIR | CommonDialog.OFN_EXPLORER | CommonDialog.OFN_ALLOWMULTISELECT);
-            if (! filenames || (filenames.length == 0)) {
-                return;
-            }
-            var dir = new File(filenames[0]);
-            if (filenames.length == 1) {
-                this.addSourceFile(dir);
-            }
-            if (! dir.exists()) {
-                return;
-            }
-            for (var i = 1; i < filenames.length; i++) {
-                this.addSourceFile(new File(dir, filenames[i]));
-            }
-        },
-        onRun : function(event) {
-            Logger.getInstance().debug('onRun()');
-            var filename = CommonDialog.getSaveFileName(this, true);
-            if (! filename) {
-                return;
-            }
-            var seekDelayMs = 0;
-            var parts = this._partsPanel.computeParts();
-            var commands = FFgui.createCommands(this._config, this._ffmpeg, filename, parts,
-                    this._fmpegConfigFrame.getTabsOptions(), seekDelayMs);
-            var batchFilename = this._config.createTempFilename('ffgui.bat');
-            var batchFile = new File(batchFilename);
-            var output = new OutputStreamWriter(new FileOutputStream(batchFile));
-            output.writeLine('REM FFgui batch file');
-            for (var i = 0; i < commands.length; i++) {
-                var command = commands[i];
-                Logger.getInstance().debug(command.line.join(' '));
-                var line;
-                for (var j = 0; j < command.line.length; j++) {
-                    var argument = FFguiEasy.escapeArgument(command.line[j]);
-                    if (j === 0) {
-                        line = argument;
-                    } else {
-                        line += ' ' + argument;
-                    }
-                }
-                output.writeLine(line);
-            }
-            output.writeLine('PAUSE');
-            output.close();
-            w32Window.shellExecute(batchFilename);
         },
         onUnload : function(event) {
             Logger.getInstance().debug('onUnload()');
