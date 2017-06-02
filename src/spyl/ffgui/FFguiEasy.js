@@ -181,8 +181,13 @@ define('spyl/ffgui/FFguiEasy', [
             return previews;
         },
         addPart : function(part) {
-            this._parts.push(part)
+            this._parts.push(part);
             return this;
+        },
+        removePart : function(index) {
+            var part = this._parts[index];
+            this._parts.splice(index, 1);
+            return part;
         },
         getDuration : function() {
             var duration = 0;
@@ -279,12 +284,27 @@ define('spyl/ffgui/FFguiEasy', [
     var PartPanel = Class.create(Panel, {
         initialize : function($super, parameters, parent) {
             $super(parameters, parent);
-            this._image = new Image({attributes: {width: Config.PART_SIZE_PX}}, this);
-            this._infoLabel = new Label({style: {width: '1w', height: Config.LABEL_HEIGHT}}, this);
-            /*var removeBtn = new Button({
-                attributes: {text: 'x'},
-                style: {width: Config.LABEL_HEIGHT, height: Config.LABEL_HEIGHT, clear: 'right'}
-            }, this);*/
+            this._image = new Image({attributes: {height: Config.PART_SIZE_PX}}, this);
+            var infoPanel = new Panel({style: {
+                hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, width: '1w', height: Config.PART_SIZE,
+                verticalAlign: 'middle', verticalPosition: 'middle', border: 1
+            }}, this);
+            this._infoLabel = new Label({style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, infoPanel);
+            var removeBtn = new Button({
+                attributes: {text: 'X'},
+                style: {position: 'absolute', top: Config.GAP_SIZE, right: Config.GAP_SIZE, width: Config.BUTTON_HEIGHT, height: Config.BUTTON_HEIGHT, clear: 'right'}
+            }, infoPanel);
+            this._infoSubLabel = new Label({style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, infoPanel);
+            var self = this;
+            infoPanel.observe('click', function(event) {
+                parent.onSelectPart(self);
+            });
+            this.observe('click', function(event) {
+                parent.onSelectPart(self);
+            });
+            removeBtn.observe('click', function() {
+                parent.onRemovePart(self);
+            });
             this._previewPart = null;
         },
         updatePreviewPart : function() {
@@ -296,7 +316,8 @@ define('spyl/ffgui/FFguiEasy', [
             previewPart.extractFrame(previewPart.getOffset()).done(function(file) {
                 self._image.setAttribute('image', file.getPath());
             });
-            this._infoLabel.setAttribute('text', 'At ' + FFmpeg.formatTime(previewPart.getOffset()) + ', Duration ' + FFmpeg.formatTime(previewPart.getDuration()));
+            this._infoLabel.setAttribute('text', 'At ' + FFmpeg.formatTime(previewPart.getOffset()));
+            this._infoSubLabel.setAttribute('text', 'Duration ' + FFmpeg.formatTime(previewPart.getDuration()));
         },
         setPreviewPart : function(previewPart) {
             this._previewPart = previewPart;
@@ -317,17 +338,18 @@ define('spyl/ffgui/FFguiEasy', [
         },
         addPreviewPart : function(part) {
             var partPanel = new PartPanel({style: {
-                hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, width: '1w', height: Config.PART_SIZE_PX,
-                verticalAlign: 'middle', verticalPosition: 'middle', border: 1, clear: 'right'
+                hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, width: '1w', height: 'calc(' + Config.PART_SIZE + '+' + (Config.GAP_SIZE*2) + ')', clear: 'right'
             }}, this);
             partPanel.setPreviewPart(part);
-            var self = this;
-            partPanel.observe('click', function(event) {
-                self.onSelectPart(event.target);
-            });
         },
         onSelectPart : function(partPanel) {
             // will be overridden
+        },
+        onRemovePart : function(partPanel) {
+            var index = this.getChildIndex(partPanel);
+            //this.removeChild(index);
+            this._partStore.removePart(index);
+            this.getParent().getParent().updateParts();
         },
         updateParts : function() {
             this.removeChildren();
@@ -355,6 +377,7 @@ define('spyl/ffgui/FFguiEasy', [
     var PreviewPanel = Class.create(Panel, {
         initialize : function($super, partStore, parameters, parent) {
             this._mark = 0;
+            this._duration = 0;
             this._partStore = partStore;
             $super(TemplateContainer.mergeParameters({
                 style: {hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, textAlign: 'center', verticalAlign: 'middle'}
@@ -449,12 +472,12 @@ define('spyl/ffgui/FFguiEasy', [
             w32Window.shellExecute(batchFilename);
         },
         updateParts : function() {
-            var duration = this._partStore.getDuration();
+            this._duration = this._partStore.getDuration();
             var time = this.getTime();
             this.setMark(0);
-            this._endTimeLabel.setAttribute('text', FFmpeg.formatTime(duration));
-            if (time > duration) {
-                time = duration;
+            this._endTimeLabel.setAttribute('text', FFmpeg.formatTime(this._duration));
+            if (time > this._duration) {
+                time = this._duration;
             }
             this.updateImageAt(time);
         },
@@ -512,6 +535,11 @@ define('spyl/ffgui/FFguiEasy', [
                 t = 0;
             }
             t += delta;
+            if (t < 0) {
+                t = 0;
+            } else if (t > this._duration) {
+                t = this._duration;
+            }
             this.setTime(t);
         }
     });
@@ -647,7 +675,7 @@ define('spyl/ffgui/FFguiEasy', [
         },
         postInit : function() {
             this.observe('unload', this.onUnload.bind(this));
-            Config.PART_SIZE_PX = FlowLayout.computeSizeFor(this, 'calc(' + Config.PART_SIZE + '+' + (Config.GAP_SIZE*2+2) + ')');
+            Config.PART_SIZE_PX = FlowLayout.computeSizeFor(this, Config.PART_SIZE);
             var topButtonHeight = '2em';
             var topPanel = new Panel({
                 style: {hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, border: 1, region: 'top', height: 'calc(' + topButtonHeight + '+' + (Config.GAP_SIZE*2+2) + ')'}
