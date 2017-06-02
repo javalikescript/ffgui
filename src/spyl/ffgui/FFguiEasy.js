@@ -376,7 +376,8 @@ define('spyl/ffgui/FFguiEasy', [
     
     var PreviewPanel = Class.create(Panel, {
         initialize : function($super, partStore, parameters, parent) {
-            this._mark = 0;
+            this._beginMark = 0;
+            this._endMark = 0;
             this._duration = 0;
             this._partStore = partStore;
             $super(TemplateContainer.mergeParameters({
@@ -400,16 +401,19 @@ define('spyl/ffgui/FFguiEasy', [
 
             new Label({attributes: {text: 'Edition:'}, style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
             var cutButton = new Button({attributes: {text: 'Cut'}, style: {width: '1w', height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
-            var markBtn = new Button({attributes: {text: 'Set mark'}, style: {width: '1w', height: Config.BUTTON_HEIGHT}}, this);
-            this._markLabel = new Label({style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
-            var removeSelectionButton = new Button({attributes: {text: 'Remove from mark'}, style: {width: '1w', height: Config.BUTTON_HEIGHT}}, this);
-            var keepSelectionButton = new Button({attributes: {text: 'Keep from mark'}, style: {width: '1w', height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
+            var beginMarkBtn = new Button({attributes: {text: 'Set begin mark'}, style: {width: '1w', height: Config.BUTTON_HEIGHT}}, this);
+            this._beginMarkLabel = new Label({style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
+            var endMarkBtn = new Button({attributes: {text: 'Set end mark'}, style: {width: '1w', height: Config.BUTTON_HEIGHT}}, this);
+            this._endMarkLabel = new Label({style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
+            var removeSelectionButton = new Button({attributes: {text: 'Remove mark'}, style: {width: '1w', height: Config.BUTTON_HEIGHT}}, this);
+            var keepSelectionButton = new Button({attributes: {text: 'Keep mark'}, style: {width: '1w', height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
 
             new Label({attributes: {text: 'Encoding:'}, style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
             var ffmpegConfigButton = new Button({attributes: {text: 'Parameters'}, style: {width: '1w', height: Config.BUTTON_HEIGHT}}, this);
             var runButton = new Button({attributes: {text: 'Export as...'}, style: {width: '1w', height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
 
-            markBtn.observe('click', this.mark.bind(this));
+            beginMarkBtn.observe('click', this.onSetBeginMark.bind(this));
+            endMarkBtn.observe('click', this.onSetEndMark.bind(this));
             cutButton.observe('click', this.onCut.bind(this));
             removeSelectionButton.observe('click', this.onRemoveSelection.bind(this));
             keepSelectionButton.observe('click', this.onKeepSelection.bind(this));
@@ -474,12 +478,14 @@ define('spyl/ffgui/FFguiEasy', [
         updateParts : function() {
             this._duration = this._partStore.getDuration();
             var time = this.getTime();
-            this.setMark(0);
+            this.setBeginMark(0);
+            this.setEndMark(this._duration);
             this._endTimeLabel.setAttribute('text', FFmpeg.formatTime(this._duration));
             if (time > this._duration) {
                 time = this._duration;
             }
             this.updateImageAt(time);
+            this.updateMark();
         },
         onTimeChange : function(event) {
             Logger.getInstance().debug('PreviewPanel.onTimeChange()');
@@ -494,16 +500,32 @@ define('spyl/ffgui/FFguiEasy', [
                 self._image.setAttribute('image', file.getPath());
             });
         },
-        getMark : function() {
-            return this._mark;
+        updateMark : function() {
+            this._beginMark = this.adjustTime(this._beginMark);
+            this._endMark = this.adjustTime(this._endMark);
+            if (this._beginMark > this._endMark) {
+                var from = this._endMark;
+                this._endMark = this._beginMark;
+                this._beginMark = from;
+            }
+            this._beginMarkLabel.setAttribute('text', FFmpeg.formatTime(this._beginMark));
+            this._endMarkLabel.setAttribute('text', FFmpeg.formatTime(this._endMark));
         },
-        setMark : function(time) {
-            Logger.getInstance().debug('PreviewPanel.setMark(' + FFmpeg.formatTime(time) + ')');
-            this._mark = time;
-            this._markLabel.setAttribute('text', FFmpeg.formatTime(this._mark));
+        setBeginMark : function(time) {
+            Logger.getInstance().debug('PreviewPanel.setBeginMark(' + FFmpeg.formatTime(time) + ')');
+            this._beginMark = time;
+            this.updateMark();
         },
-        mark : function() {
-            this.setMark(this.getTime());
+        setEndMark : function(time) {
+            Logger.getInstance().debug('PreviewPanel.setEndMark(' + FFmpeg.formatTime(time) + ')');
+            this._endMark = time;
+            this.updateMark();
+        },
+        onSetBeginMark : function() {
+            this.setBeginMark(this.getTime());
+        },
+        onSetEndMark : function() {
+            this.setEndMark(this.getTime());
         },
         getTime : function() {
             var time = this._timeEdit.getAttribute('text');
@@ -513,17 +535,18 @@ define('spyl/ffgui/FFguiEasy', [
             return FFmpeg.parseTime(time);
         },
         getRange : function() {
-            var time = this.getTime();
-            if (time > this._mark) {
-                return {
-                    from: this._mark,
-                    to: time
-                };
-            }
             return {
-                from: time,
-                to: this._mark
+                from: this._beginMark,
+                to: this._endMark
             };
+        },
+        adjustTime : function(t) {
+            if ((typeof t !== 'number') || (t < 0)) {
+                return 0;
+            } else if (t > this._duration) {
+                return this._duration;
+            }
+            return t;
         },
         setTime : function(t) {
             this._timeEdit.setAttribute('text', FFmpeg.formatTime(t));
@@ -534,13 +557,7 @@ define('spyl/ffgui/FFguiEasy', [
             if (t == null) {
                 t = 0;
             }
-            t += delta;
-            if (t < 0) {
-                t = 0;
-            } else if (t > this._duration) {
-                t = this._duration;
-            }
-            this.setTime(t);
+            this.setTime(this.adjustTime(t + delta));
         }
     });
     
@@ -702,7 +719,6 @@ define('spyl/ffgui/FFguiEasy', [
             var addButton = new Button({attributes: {text: 'Add...'}, style: {width: '12fw', height: topButtonHeight}}, partsToolPanel);
 
             addButton.observe('click', this.onAddSources.bind(this));
-
             var menuVisible = false;
             menuButton.observe('click', function() {
                 menuVisible = !menuVisible;
