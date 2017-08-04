@@ -88,6 +88,9 @@ define('spyl/ffgui/FFguiEasy', [
         removeSource : function(id) {
             delete this._sources[id];
         },
+        getSources : function() {
+            return this._sources;
+        },
         clean : function() {
             this._sources = {};
         }
@@ -174,6 +177,9 @@ define('spyl/ffgui/FFguiEasy', [
         setParts : function(parts) {
             this._parts = parts;
             return this;
+        },
+        clean : function() {
+            this._parts = [];
         },
         getPreviewParts : function() {
             var previews = [];
@@ -625,6 +631,18 @@ define('spyl/ffgui/FFguiEasy', [
             this._config.markAsChanged();
             Logger.getInstance().info('Encoding configuration "' + name + '" updated');
         },
+        load : function(obj) {
+            this._configCB.setAttribute('text', obj.config);
+            this._optionsEdit.setAttribute('text', obj.options);
+            //this._exitAfterCB.setSelected(obj.exitAfter);
+            //this._fileEdit.setAttribute('text', obj.filename);
+        },
+        save : function() {
+            return {
+                config: this._configCB.getAttribute('text'),
+                options: this._optionsEdit.getAttribute('text')
+            };
+        },
         loadTabs : function(tabs) {
             if (tabs) {
                 for (var key in tabs) {
@@ -669,6 +687,7 @@ define('spyl/ffgui/FFguiEasy', [
             this._ffmpeg = ffmpeg;
             this._sourceStore = new SourceStore(this._ffmpeg, this._config);
             this._partStore = new PartStore();
+            this._projectFilename = null;
             $super({
                 attributes: {title: 'FFgui', layout: 'jls/gui/BorderLayout', icon: FFguiEasy.ICON},
                 style: {visibility: 'hidden', splitSize: 5, width: 800, height: 600}
@@ -724,8 +743,8 @@ define('spyl/ffgui/FFguiEasy', [
             new MenuItem({label: 'Add sources...', event: 'addSources'}, fileMenu);
             MenuItem.createMenuSeparator(fileMenu);
             new MenuItem({label: 'Open project...', event: 'openProject'}, fileMenu);
-            //new MenuItem({label: 'Save', event: 'saveProject'}, fileMenu);
-            //new MenuItem({label: 'Save project...', event: 'saveProjectAs'}, fileMenu);
+            new MenuItem({label: 'Save', event: 'saveProject'}, fileMenu);
+            new MenuItem({label: 'Save project...', event: 'saveProjectAs'}, fileMenu);
             MenuItem.createMenuSeparator(fileMenu);
             new MenuItem({label: 'Exit', event: 'exit'}, fileMenu);
 
@@ -734,10 +753,26 @@ define('spyl/ffgui/FFguiEasy', [
             
             this._menu.observe('addSources', this.onAddSources.bind(this));
             this._menu.observe('openProject', this.onOpenProject.bind(this));
+            this._menu.observe('saveProject', this.onSaveProject.bind(this));
+            this._menu.observe('saveProjectAs', this.onSaveProjectAs.bind(this));
             this._menu.observe('exit', this.onExit.bind(this));
             this._menu.observe('about', this.onAbout.bind(this));
 
             this.setMenu(this._menu);
+        },
+        updateParts : function() {
+            // TODO Refresh panels
+            this._partsPanel.updateParts();
+            this._previewPanel.updateParts();
+        },
+        addSourceFile : function(file, addPart) {
+            var source = this._sourceStore.addSourceFile(file);
+            if (addPart) {
+                var from = 0;
+                var to = Math.floor(source.getDuration() / 1000) * 1000;
+                this._partStore.addPart(new Part(source, from, to));
+            }
+            return source;
         },
         onAddSources : function(event) {
             var filenames = CommonDialog.getOpenFileName(this,
@@ -756,29 +791,15 @@ define('spyl/ffgui/FFguiEasy', [
             }
             this.updateParts();
         },
-        onSelectPart : function(partPanel) {
-            Logger.getInstance().debug('onSelectPart()');
-            partPanel.getStyle().setProperty('border', 0);
-            this._previewPanel.setTime(partPanel.getPreviewPart().getOffset());
-        },
-        updateParts : function() {
-            // TODO Refresh panels
-            this._partsPanel.updateParts();
-            this._previewPanel.updateParts();
-        },
-        addSourceFile : function(file, addPart) {
-            var source = this._sourceStore.addSourceFile(file);
-            if (addPart) {
-                var from = 0;
-                var to = Math.floor(source.getDuration() / 1000) * 1000;
-                this._partStore.addPart(new Part(source, from, to));
-            }
-            return source;
+        reset : function() {
+            this._partStore.clean();
+            this._sourceStore.clean();
+            this._fmpegConfigFrame.resetTabs();
         },
         openProjectObject : function(project) {
-            this._sourceStore.clean();
-            //this.loadTabs(project.tabs);
-            //this._destinationTab.load(project.destination);
+            this.reset();
+            this._fmpegConfigFrame.loadTabs(project.tabs);
+            this._fmpegConfigFrame.load(project.destination);
             var idMap = {};
             for (var id in project.sources) {
                 var source = this.addSourceFile(new File(project.sources[id]), false);
@@ -801,6 +822,36 @@ define('spyl/ffgui/FFguiEasy', [
             var project = Config.loadJSON(file);
             this.openProjectObject(project);
         },
+        saveProject : function(filename) {
+            var file = new File(filename);
+            var sourcesToSave = {};
+            var sources = this._sourceStore.getSources();
+            for (var id in sources) {
+                sourcesToSave[id] = sources[id].getFile().getPath();
+            }
+            var partsToSave = [];
+            var parts = this._partStore.getParts();
+            for (var i = 0; i < parts.length; i++) {
+                var part = parts[i];
+                partsToSave.push({
+                    from: part.getFrom(),
+                    to: part.getTo(),
+                    sourceId: part.getSource().getId()
+                });
+            }
+            var project = {
+                    tabs: this._fmpegConfigFrame.saveTabs(),
+                    sources: sourcesToSave,
+                    parts: partsToSave,
+                    destination: this._fmpegConfigFrame.save()
+            };
+            Config.saveJSON(file, project);
+        },
+        onSelectPart : function(partPanel) {
+            Logger.getInstance().debug('onSelectPart()');
+            partPanel.getStyle().setProperty('border', 0);
+            this._previewPanel.setTime(partPanel.getPreviewPart().getOffset());
+        },
         onUnload : function(event) {
             Logger.getInstance().debug('onUnload()');
             this._config.save();
@@ -811,7 +862,25 @@ define('spyl/ffgui/FFguiEasy', [
         onOpenProject : function(event) {
             var filename = CommonDialog.getOpenFileName(this);
             if (filename) {
+                this._projectFilename = null;
                 this.openProject(filename);
+                this._projectFilename = filename;
+            }
+        },
+        onSaveProjectAs : function(event) {
+            var filename = CommonDialog.getSaveFileName(this._panel);
+            if (! (filename && FFgui.canOverwriteFile(filename))) {
+                return;
+            }
+            this._projectFilename = null;
+            this.saveProject(filename);
+            this._projectFilename = filename;
+        },
+        onSaveProject : function(event) {
+            if (this._projectFilename != null) {
+                this.saveProject(this._projectFilename);
+            } else {
+                this.onSaveProjectAs(event);
             }
         },
         onAbout : function(event) {
