@@ -20,6 +20,7 @@ define('spyl/ffgui/FFguiEasy', [
   'jls/gui/GuiUtilities',
   'jls/gui/TemplateContainer',
   'jls/gui/FlowLayout',
+  'jls/util/XmlElement',
   'jls/win32/Window',
   'jls/win32/Image',
   'jls/win32/SysLink',
@@ -50,6 +51,7 @@ define('spyl/ffgui/FFguiEasy', [
   GuiUtilities,
   TemplateContainer,
   FlowLayout,
+  XmlElement,
   w32Window,
   w32Image,
   w32SysLink,
@@ -429,9 +431,7 @@ define('spyl/ffgui/FFguiEasy', [
             removeSelectionButton.observe('click', this.onRemoveSelection.bind(this));
             keepSelectionButton.observe('click', this.onKeepSelection.bind(this));
 
-            ffmpegConfigButton.observe('click', function() {
-                parent.getFFmpegConfigFrame().getStyle().setProperty('visibility', 'visible');
-            });
+            ffmpegConfigButton.observe('click', parent.showFmpegConfigFrame.bind(parent));
             runButton.observe('click', this.onRun.bind(this));
         },
         onCut : function(event) {
@@ -739,14 +739,21 @@ define('spyl/ffgui/FFguiEasy', [
             addButton.observe('click', this.onAddSources.bind(this));
 
             this._menu = MenuItem.createMenu();
-            var fileMenu = new MenuItem({label: 'File', popup: true}, this._menu);
-            new MenuItem({label: 'Add sources...', event: 'addSources'}, fileMenu);
-            MenuItem.createMenuSeparator(fileMenu);
-            new MenuItem({label: 'Open project...', event: 'openProject'}, fileMenu);
+            var fileMenu = new MenuItem({label: 'Project', popup: true}, this._menu);
+            new MenuItem({label: 'Open...', event: 'openProject'}, fileMenu);
             new MenuItem({label: 'Save', event: 'saveProject'}, fileMenu);
-            new MenuItem({label: 'Save project...', event: 'saveProjectAs'}, fileMenu);
+            new MenuItem({label: 'Save...', event: 'saveProjectAs'}, fileMenu);
+            MenuItem.createMenuSeparator(fileMenu);
+            new MenuItem({label: 'Import...', event: 'import'}, fileMenu);
             MenuItem.createMenuSeparator(fileMenu);
             new MenuItem({label: 'Exit', event: 'exit'}, fileMenu);
+
+            var sourceMenu = new MenuItem({label: 'Input', popup: true}, this._menu);
+            new MenuItem({label: 'Add sources...', event: 'addSources'}, sourceMenu);
+
+            var encodingMenu = new MenuItem({label: 'Output', popup: true}, this._menu);
+            new MenuItem({label: 'Parameters', event: 'encodingParameters'}, encodingMenu);
+            new MenuItem({label: 'Export...', event: 'encodingExportAs'}, encodingMenu);
 
             var aboutMenu = new MenuItem({label: '?', popup: true}, this._menu);
             new MenuItem({label: 'About', event: 'about'}, aboutMenu);
@@ -755,10 +762,18 @@ define('spyl/ffgui/FFguiEasy', [
             this._menu.observe('openProject', this.onOpenProject.bind(this));
             this._menu.observe('saveProject', this.onSaveProject.bind(this));
             this._menu.observe('saveProjectAs', this.onSaveProjectAs.bind(this));
+            this._menu.observe('import', this.onImport.bind(this));
             this._menu.observe('exit', this.onExit.bind(this));
+            
+            this._menu.observe('encodingParameters', this.showFmpegConfigFrame.bind(this));
+            this._menu.observe('encodingExportAs', this._previewPanel.onRun.bind(this._previewPanel));
+            
             this._menu.observe('about', this.onAbout.bind(this));
 
             this.setMenu(this._menu);
+        },
+        showFmpegConfigFrame : function() {
+            this._fmpegConfigFrame.getStyle().setProperty('visibility', 'visible');
         },
         updateParts : function() {
             // TODO Refresh panels
@@ -847,6 +862,53 @@ define('spyl/ffgui/FFguiEasy', [
             };
             Config.saveJSON(file, project);
         },
+        importWLMP : function(filename) {
+            var file = new File(filename);
+            var content = Config.loadAsString(file);
+            var e4x = new XML(XmlElement.removeXmlDeclaration(content));
+            var xmlProject = XmlElement.createFromE4X(e4x);
+            var idMap = {};
+            var sources = {};
+            var parts = [];
+            var mediaItems = xmlProject.getChildByName('MediaItems').getChildrenByName('MediaItem');
+            for (var i = 0; i < mediaItems.length; i++) {
+                var mediaItem = mediaItems[i];
+                var filePath = mediaItem.getAttribute('filePath').toString();
+                var mediaItemID = mediaItem.getAttribute('id').toString();
+                Logger.getInstance().debug('mediaItem filePath: ' + filePath);
+                var file = new File(filePath);
+                if (! file.exists()) {
+                    continue;
+                }
+                var id = this._config.getSourceId(file);
+                sources[id] = filePath;
+                idMap[mediaItemID] = id;
+            }
+            var videoClips = xmlProject.getChildByName('Extents').getChildrenByName('VideoClip');
+            for (var i = 0; i < videoClips.length; i++) {
+                var videoClip = videoClips[i];
+                var mediaItemID = videoClip.getAttribute('mediaItemID').toString();
+                var inTime = Math.floor(parseFloat(videoClip.getAttribute('inTime').toString()) * 1000);
+                var outTime =  Math.floor(parseFloat(videoClip.getAttribute('outTime').toString()) * 1000);
+                Logger.getInstance().debug('videoClip mediaItemID: ' + mediaItemID);
+                parts.push({
+                    sourceId: idMap[mediaItemID],
+                    from: inTime,
+                    to: outTime
+                });
+            }
+            var project = {
+                    tabs: {},
+                    sources: sources,
+                    parts: parts,
+                    destination: {
+                        config: '',
+                        options: '',
+                        filename: ''
+                    }
+            };
+            this.openProjectObject(project);
+        },
         onSelectPart : function(partPanel) {
             Logger.getInstance().debug('onSelectPart()');
             partPanel.getStyle().setProperty('border', 0);
@@ -868,7 +930,7 @@ define('spyl/ffgui/FFguiEasy', [
             }
         },
         onSaveProjectAs : function(event) {
-            var filename = CommonDialog.getSaveFileName(this._panel);
+            var filename = CommonDialog.getSaveFileName(this);
             if (! (filename && FFgui.canOverwriteFile(filename))) {
                 return;
             }
@@ -881,6 +943,17 @@ define('spyl/ffgui/FFguiEasy', [
                 this.saveProject(this._projectFilename);
             } else {
                 this.onSaveProjectAs(event);
+            }
+        },
+        onImport : function(event) {
+            var filename = CommonDialog.getOpenFileName(this);
+            if (! filename) {
+                return;
+            }
+            if (filename.endsWith('.wlmp')) {
+                this.importWLMP(filename);
+            } else {
+                CommonDialog.messageBox('The file cannot be imported, the format is unknown');
             }
         },
         onAbout : function(event) {
