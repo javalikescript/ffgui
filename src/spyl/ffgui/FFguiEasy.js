@@ -572,6 +572,108 @@ define('spyl/ffgui/FFguiEasy', [
         }
     });
     
+    var SourceInfo = Class.create(Panel, {
+        initialize : function($super, parameters, parent) {
+            $super(parameters, parent);
+
+            new Label({attributes: {text: this._source.getFile().getName()}, style: {width: '1w', height: Config.LABEL_HEIGHT}}, this);
+            //var infoBtn = new Button({attributes: {text: 'i'}, style: {width: Config.DEFAULT_HEIGHT, height: Config.DEFAULT_HEIGHT}}, this);
+            var playBtn = new Button({attributes: {text: '>'}, style: {width: Config.BUTTON_HEIGHT, height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
+            this._infoLabel = new Label({style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
+
+            playBtn.observe('click', this.onPlay.bind(this));
+            //infoBtn.observe('click', this.onInfo.bind(this));
+
+            this.updateProbeResult();
+        },
+        setFfmpeg : function(ffmpeg) {
+            this._ffmpeg = ffmpeg;
+        },
+        setSource : function(source) {
+            this._source = source;
+        },
+        getSource : function() {
+            return this._source;
+        },
+        onPlay : function(event) {
+            this._ffmpeg.playWithInfo(this._source.getFile().getPath());
+        },
+        onInfo : function(event) {
+            Logger.getInstance().debug('onInfo() ' + this._source.getId());
+            run([{
+                name: 'FFprobe for ' + this._source.getFile().getName(),
+                line: [this._ffgui.getFFmpeg()._ffprobe, '-pretty', '-show_format', '-show_streams', this._source.getFile().getPath()],
+                showStandardError: false
+            }]);
+        },
+        updateProbeResult : function() {
+            var pr = this._source.getProbeResult();
+            this._duration = parseFloat(pr.duration);
+            var info = Math.floor(this._duration) + 's';
+            if (pr.format_name) {
+                info += '. Format: "' + pr.format_name + '"';
+            }
+            if ('video' in pr.streamByCodecType) {
+                var videoStream = pr.streamByCodecType.video[0];
+                info += '. Video codec: "' + videoStream.codec_name + '"';
+                info += ', ' + videoStream.width + 'x' + videoStream.height;
+                info += ', ' + videoStream.display_aspect_ratio;
+            }
+            if ('audio' in pr.streamByCodecType) {
+                var audioStream = pr.streamByCodecType.audio[0];
+                info += '. Audio codec: "' + audioStream.codec_name + '"';
+                info += ', ' + audioStream.sample_rate + 'Hz';
+            }
+            info += '.';
+            this._infoLabel.setAttribute('text', info);
+        },
+        updateSource : function(name) {
+            switch (name) {
+            case 'remove':
+                this.destroy();
+                break;
+            }
+        }
+    });
+
+    var SourcesFrame = Class.create(Frame, {
+        initialize : function($super, ffmpeg, config, sourceStore) {
+            this._ffmpeg = ffmpeg;
+            this._config = config;
+            this._sourceStore = sourceStore;
+            $super({
+                attributes: {title: 'Input Sources', hideOnClose: true, layout: 'jls/gui/CardLayout', icon: FFguiEasy.ICON},
+                style: {visibility: 'hidden', hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, width: 640, height: 480}
+            });
+            this._panel = new Panel({style: {hGap: 1, vGap: 1}}, this);
+        },
+        addSource : function(source) {
+            if (this.getSource(source.getId()) != null) {
+                return;
+            }
+            new SourceInfo({
+                attributes: {ffmpeg: this._ffmpeg, source: source},
+                style: {hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, width: '1w', height: Config.PART_SIZE, border: 1, clear: 'right'}
+            }, this._panel);
+        },
+        getSource : function(id) {
+            for (var i = 0; i < this._panel.getChildCount(); i++) {
+                var child = this._panel.getChild(i);
+                if (child.getSource().getId() == id) {
+                    return child;
+                }
+            }
+            return null;
+        },
+        updateSource : function(id, name) {
+            var source = this.getSource(id);
+            if (source == null) {
+                return;
+            }
+            source.updateSource(name);
+        }
+    });
+    
     var FFmpegConfigFrame = Class.create(Frame, {
         initialize : function($super, config, configTabs) {
             this._config = config;
@@ -698,6 +800,7 @@ define('spyl/ffgui/FFguiEasy', [
                 self.getStyle().setProperty('visibility', 'visible');
             });
             this._fmpegConfigFrame = new FFmpegConfigFrame(this._config, configTabs);
+            this._sourcesFrame = new SourcesFrame(this._ffmpeg, this._config, this._sourceStore);
         },
         getConfig : function() {
             return this._config;
@@ -749,31 +852,39 @@ define('spyl/ffgui/FFguiEasy', [
             new MenuItem({label: 'Exit', event: 'exit'}, fileMenu);
 
             var sourceMenu = new MenuItem({label: 'Input', popup: true}, this._menu);
-            new MenuItem({label: 'Add sources...', event: 'addSources'}, sourceMenu);
+            new MenuItem({label: 'Add...', event: 'addSources'}, sourceMenu);
+            new MenuItem({label: 'Show', event: 'showSources'}, sourceMenu);
 
             var encodingMenu = new MenuItem({label: 'Output', popup: true}, this._menu);
             new MenuItem({label: 'Parameters', event: 'encodingParameters'}, encodingMenu);
             new MenuItem({label: 'Export...', event: 'encodingExportAs'}, encodingMenu);
 
             var aboutMenu = new MenuItem({label: '?', popup: true}, this._menu);
+            new MenuItem({label: 'FFplay', event: 'helpFFplay'}, aboutMenu);
             new MenuItem({label: 'About', event: 'about'}, aboutMenu);
             
-            this._menu.observe('addSources', this.onAddSources.bind(this));
             this._menu.observe('openProject', this.onOpenProject.bind(this));
             this._menu.observe('saveProject', this.onSaveProject.bind(this));
             this._menu.observe('saveProjectAs', this.onSaveProjectAs.bind(this));
             this._menu.observe('import', this.onImport.bind(this));
             this._menu.observe('exit', this.onExit.bind(this));
             
+            this._menu.observe('addSources', this.onAddSources.bind(this));
+            this._menu.observe('showSources', this.showSourcesFrame.bind(this));
+
             this._menu.observe('encodingParameters', this.showFmpegConfigFrame.bind(this));
             this._menu.observe('encodingExportAs', this._previewPanel.onRun.bind(this._previewPanel));
             
+            this._menu.observe('helpFFplay', this.onHelpFFplay.bind(this));
             this._menu.observe('about', this.onAbout.bind(this));
 
             this.setMenu(this._menu);
         },
         showFmpegConfigFrame : function() {
             this._fmpegConfigFrame.getStyle().setProperty('visibility', 'visible');
+        },
+        showSourcesFrame : function() {
+            this._sourcesFrame.getStyle().setProperty('visibility', 'visible');
         },
         updateParts : function() {
             // TODO Refresh panels
@@ -782,6 +893,7 @@ define('spyl/ffgui/FFguiEasy', [
         },
         addSourceFile : function(file, addPart) {
             var source = this._sourceStore.addSourceFile(file);
+            this._sourcesFrame.addSource(source);
             if (addPart) {
                 var from = 0;
                 var to = Math.floor(source.getDuration() / 1000) * 1000;
@@ -920,6 +1032,7 @@ define('spyl/ffgui/FFguiEasy', [
             //this._consoleTab.shutdown();
             this._ffmpeg.shutdown();
             this._fmpegConfigFrame.onDestroy();
+            this._sourcesFrame.onDestroy();
         },
         onOpenProject : function(event) {
             var filename = CommonDialog.getOpenFileName(this);
@@ -955,6 +1068,21 @@ define('spyl/ffgui/FFguiEasy', [
             } else {
                 CommonDialog.messageBox('The file cannot be imported, the format is unknown');
             }
+        },
+        onHelpFFplay : function(event) {
+            var frame = new Frame({attributes: {title: 'Help FFplay'}, style: {splitSize: 5, width: 480, height: 360}}, this);
+            var about = 'FFplay display the timestamp of the current frame on the top left corner.' +
+            ' This value may not start at 0.\n\n' +
+            'While playing, the following keys are available:\n' +
+            '  escape:\n\tQuit\n' +
+            '  f:\n\ttoggle full screen\n' +
+            '  p, space:\n\tpause\n' +
+            '  s:\n\tactivate frame-step mode\n' +
+            '  left/right:\n\tseek backward/forward 10 seconds\n' +
+            '  down/up:\n\tseek backward/forward 1 minute\n' +
+            '  page down/page up:\n\tseek backward/forward 10 minutes\n' +
+            '  mouse click:\n\tseek to percentage in file corresponding to fraction of width\n';
+            new Label({attributes: {text: about}, style: {width: '100%', height: '100%'}}, frame);
         },
         onAbout : function(event) {
             var aboutFrame = new Frame({attributes: {title: 'About FFgui', icon: this._icon}}, this);
