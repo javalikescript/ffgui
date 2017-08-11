@@ -1122,7 +1122,7 @@ define('spyl/ffgui/FFguiEasy', [
             return value;
         },
         main : function(args) {
-            System.out.println('Initializing UI...');
+            System.err.println('Initializing UI...');
             // Show splash will loading?
             var configFilename = System.getProperty('spyl.ffgui.configFilename', 'ffgui.json');
             var tabsFilename = System.getProperty('spyl.ffgui.tabsFilename', 'ffgui.tabs.json');
@@ -1178,6 +1178,10 @@ define('spyl/ffgui/FFguiEasy', [
                         break;
                     case '--start':
                         start = true;
+                        break;
+                    case '--updateEncoders':
+                        System.err.println('Extracting encoders...');
+                        System.out.print(Object.toJSON(FFgui.extractEncoders(ffmpeg)));
                         break;
                     }
                     i++;
