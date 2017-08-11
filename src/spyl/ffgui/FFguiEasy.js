@@ -388,11 +388,11 @@ define('spyl/ffgui/FFguiEasy', [
     });
     
     var PreviewPanel = Class.create(Panel, {
-        initialize : function($super, partStore, parameters, parent) {
+        initialize : function($super, parameters, parent) {
             this._beginMark = 0;
             this._endMark = 0;
             this._duration = 0;
-            this._partStore = partStore;
+            this._partStore = parent.getPartStore();
             $super(TemplateContainer.mergeParameters({
                 style: {hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, textAlign: 'center', verticalAlign: 'middle'}
             }, parameters), parent);
@@ -460,11 +460,12 @@ define('spyl/ffgui/FFguiEasy', [
             if (! filename) {
                 return;
             }
+            var parent = this.getParent();
             var seekDelayMs = 0;
-            var parts = this.getParent().getPartsPanel().computeParts();
-            var commands = FFgui.createCommands(this._config, this._ffmpeg, filename, parts,
-                    this.getParent().getFFmpegConfigFrame().getTabsOptions(), seekDelayMs);
-            var batchFilename = this._config.createTempFilename('ffgui.bat');
+            var parts = parent.getPartsPanel().computeParts();
+            var commands = FFgui.createCommands(parent.getConfig(), parent.getFFmpeg(), filename, parts,
+                    parent.getFFmpegConfigFrame().getTabsOptions(), seekDelayMs);
+            var batchFilename = parent.getConfig().createTempFilename('ffgui.bat');
             var batchFile = new File(batchFilename);
             var output = new OutputStreamWriter(new FileOutputStream(batchFile));
             output.writeLine('REM FFgui batch file');
@@ -817,6 +818,9 @@ define('spyl/ffgui/FFguiEasy', [
         getFFmpegConfigFrame : function() {
             return this._fmpegConfigFrame;
         },
+        getPartsPanel : function() {
+            return this._partsPanel;
+        },
         postInit : function() {
             this.observe('unload', this.onUnload.bind(this));
             Config.PART_SIZE_PX = FlowLayout.computeSizeFor(this, Config.PART_SIZE);
@@ -829,7 +833,7 @@ define('spyl/ffgui/FFguiEasy', [
             this._partsPanel = new PartsPanel(this._partStore, {
                 style: {hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, border: 1, region: 'center', overflowY: 'scroll'}
             }, centerPanel);
-            this._previewPanel = new PreviewPanel(this._partStore, {
+            this._previewPanel = new PreviewPanel({
                 style: {border: 1, region: 'left', width: 320, splitter: 'true'}
             }, this);
             
@@ -839,7 +843,9 @@ define('spyl/ffgui/FFguiEasy', [
             };
 
             var addButton = new Button({attributes: {text: 'Add...'}, style: {width: '12fw', height: Config.BUTTON_HEIGHT}}, partsToolPanel);
+            var sourcesButton = new Button({attributes: {text: 'Sources'}, style: {width: '12fw', height: Config.BUTTON_HEIGHT, right: 0}}, partsToolPanel);
             addButton.observe('click', this.onAddSources.bind(this));
+            sourcesButton.observe('click', this.showSourcesFrame.bind(this));
 
             this._menu = MenuItem.createMenu();
             var fileMenu = new MenuItem({label: 'Project', popup: true}, this._menu);
@@ -852,8 +858,8 @@ define('spyl/ffgui/FFguiEasy', [
             new MenuItem({label: 'Exit', event: 'exit'}, fileMenu);
 
             var sourceMenu = new MenuItem({label: 'Input', popup: true}, this._menu);
-            new MenuItem({label: 'Add...', event: 'addSources'}, sourceMenu);
             new MenuItem({label: 'Show', event: 'showSources'}, sourceMenu);
+            new MenuItem({label: 'Add...', event: 'addSources'}, sourceMenu);
 
             var encodingMenu = new MenuItem({label: 'Output', popup: true}, this._menu);
             new MenuItem({label: 'Parameters', event: 'encodingParameters'}, encodingMenu);
