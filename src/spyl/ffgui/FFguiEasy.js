@@ -414,22 +414,23 @@ define('spyl/ffgui/FFguiEasy', [
 
             new Label({attributes: {text: 'Edition:'}, style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
             var cutButton = new Button({attributes: {text: 'Cut'}, style: {width: '1w', height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
+            cutButton.observe('click', this.onCut.bind(this));
+            /*
             var beginMarkBtn = new Button({attributes: {text: 'Set begin mark'}, style: {width: '1w', height: Config.BUTTON_HEIGHT}}, this);
             this._beginMarkLabel = new Label({style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
             var endMarkBtn = new Button({attributes: {text: 'Set end mark'}, style: {width: '1w', height: Config.BUTTON_HEIGHT}}, this);
             this._endMarkLabel = new Label({style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
             var removeSelectionButton = new Button({attributes: {text: 'Remove mark'}, style: {width: '1w', height: Config.BUTTON_HEIGHT}}, this);
             var keepSelectionButton = new Button({attributes: {text: 'Keep mark'}, style: {width: '1w', height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
+            beginMarkBtn.observe('click', this.onSetBeginMark.bind(this));
+            endMarkBtn.observe('click', this.onSetEndMark.bind(this));
+            removeSelectionButton.observe('click', this.onRemoveSelection.bind(this));
+            keepSelectionButton.observe('click', this.onKeepSelection.bind(this));
+            */
 
             new Label({attributes: {text: 'Encoding:'}, style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
             var ffmpegConfigButton = new Button({attributes: {text: 'Parameters'}, style: {width: '1w', height: Config.BUTTON_HEIGHT}}, this);
             var runButton = new Button({attributes: {text: 'Export as...'}, style: {width: '1w', height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
-
-            beginMarkBtn.observe('click', this.onSetBeginMark.bind(this));
-            endMarkBtn.observe('click', this.onSetEndMark.bind(this));
-            cutButton.observe('click', this.onCut.bind(this));
-            removeSelectionButton.observe('click', this.onRemoveSelection.bind(this));
-            keepSelectionButton.observe('click', this.onKeepSelection.bind(this));
 
             ffmpegConfigButton.observe('click', parent.showFmpegConfigFrame.bind(parent));
             runButton.observe('click', this.onRun.bind(this));
@@ -520,8 +521,10 @@ define('spyl/ffgui/FFguiEasy', [
                 this._endMark = this._beginMark;
                 this._beginMark = from;
             }
+            /*
             this._beginMarkLabel.setAttribute('text', FFmpeg.formatTime(this._beginMark));
             this._endMarkLabel.setAttribute('text', FFmpeg.formatTime(this._endMark));
+            */
         },
         setBeginMark : function(time) {
             Logger.getInstance().debug('PreviewPanel.setBeginMark(' + FFmpeg.formatTime(time) + ')');
