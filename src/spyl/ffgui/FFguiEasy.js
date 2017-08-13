@@ -62,6 +62,12 @@ define('spyl/ffgui/FFguiEasy', [
   ArgumentTab
 ) {
 
+    var DELETE_CHAR = '\u00d7'; // '\u2715'; // '\u2a2f'; // '\u24e7'; // '\u2717'; // '\u2613'; //
+    var DOWN_CHAR = '\u2193';
+    var UP_CHAR = '\u2191';
+    var MENU_CHAR = '\u2630';
+    var SCISSORS_CHAR = '\u2702';
+
     var SourceStore = Class.create({
         initialize : function(ffmpeg, config) {
             this._ffmpeg = ffmpeg;
@@ -302,9 +308,13 @@ define('spyl/ffgui/FFguiEasy', [
                 hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, width: '1w', height: Config.PART_SIZE,
                 verticalAlign: 'middle', verticalPosition: 'middle', border: 1
             }}, this);
+
+            //var downBtn = new Button({attributes: {text: DOWN_CHAR}, style: {width: Config.BUTTON_HEIGHT, height: Config.BUTTON_HEIGHT}}, infoPanel);
+            //var upBtn = new Button({attributes: {text: UP_CHAR}, style: {width: Config.BUTTON_HEIGHT, height: Config.BUTTON_HEIGHT}}, infoPanel);
+
             this._infoLabel = new Label({style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, infoPanel);
             var removeBtn = new Button({
-                attributes: {text: 'X'},
+                attributes: {text: DELETE_CHAR},
                 style: {position: 'absolute', top: Config.GAP_SIZE, right: Config.GAP_SIZE, width: Config.BUTTON_HEIGHT, height: Config.BUTTON_HEIGHT, clear: 'right'}
             }, infoPanel);
             this._infoSubLabel = new Label({style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, infoPanel);
@@ -399,8 +409,10 @@ define('spyl/ffgui/FFguiEasy', [
 
             this._image = new Image({style: {border: true, clear: 'right'}}, this);
             
-            this._timeEdit = new Edit({attributes: {text: ''}, style: {width: '12fw', height: Config.EDIT_HEIGHT, border: 1}}, this);
-            this._endTimeLabel = new Label({style: {width: '12fw', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
+            var TIME_WIDTH = '12fw';
+            
+            this._timeEdit = new Edit({attributes: {text: ''}, style: {width: TIME_WIDTH, height: Config.EDIT_HEIGHT, border: 1}}, this);
+            this._endTimeLabel = new Label({style: {width: TIME_WIDTH, height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
             var previous1mBtn = new Button({attributes: {text: '<<'}, style: {width: '4fw', height: Config.BUTTON_HEIGHT}}, this);
             var previous1sBtn = new Button({attributes: {text: '<'}, style: {width: '3fw', height: Config.BUTTON_HEIGHT}}, this);
             var next1sBtn = new Button({attributes: {text: '>'}, style: {width: '3fw', height: Config.BUTTON_HEIGHT}}, this);
@@ -413,20 +425,18 @@ define('spyl/ffgui/FFguiEasy', [
             next1mBtn.observe('click', this.moveTime.bind(this, 60000));
 
             new Label({attributes: {text: 'Edition:'}, style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
-            var cutButton = new Button({attributes: {text: 'Cut'}, style: {width: '1w', height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
+
+            var cutButton = new Button({attributes: {text: SCISSORS_CHAR + ' Cut'}, style: {width: '1w', height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
             cutButton.observe('click', this.onCut.bind(this));
-            /*
-            var beginMarkBtn = new Button({attributes: {text: 'Set begin mark'}, style: {width: '1w', height: Config.BUTTON_HEIGHT}}, this);
-            this._beginMarkLabel = new Label({style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
-            var endMarkBtn = new Button({attributes: {text: 'Set end mark'}, style: {width: '1w', height: Config.BUTTON_HEIGHT}}, this);
-            this._endMarkLabel = new Label({style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
-            var removeSelectionButton = new Button({attributes: {text: 'Remove mark'}, style: {width: '1w', height: Config.BUTTON_HEIGHT}}, this);
-            var keepSelectionButton = new Button({attributes: {text: 'Keep mark'}, style: {width: '1w', height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
-            beginMarkBtn.observe('click', this.onSetBeginMark.bind(this));
-            endMarkBtn.observe('click', this.onSetEndMark.bind(this));
+
+            this._beginMarkBtn = new Button({attributes: {text: 'Set begin mark'}, style: {width: '1w', height: Config.BUTTON_HEIGHT}}, this);
+            this._endMarkBtn = new Button({attributes: {text: 'Set end mark'}, style: {width: '1w', height: Config.BUTTON_HEIGHT}}, this);
+            var removeSelectionButton = new Button({attributes: {text: '[' + DELETE_CHAR + ']'}, style: {width: '5fw', height: Config.BUTTON_HEIGHT}}, this);
+            var keepSelectionButton = new Button({attributes: {text: DELETE_CHAR + '[ ]' + DELETE_CHAR}, style: {width: '5fw', height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
+            this._beginMarkBtn.observe('click', this.onSetBeginMark.bind(this));
+            this._endMarkBtn.observe('click', this.onSetEndMark.bind(this));
             removeSelectionButton.observe('click', this.onRemoveSelection.bind(this));
             keepSelectionButton.observe('click', this.onKeepSelection.bind(this));
-            */
 
             new Label({attributes: {text: 'Encoding:'}, style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
             var ffmpegConfigButton = new Button({attributes: {text: 'Parameters'}, style: {width: '1w', height: Config.BUTTON_HEIGHT}}, this);
@@ -455,18 +465,13 @@ define('spyl/ffgui/FFguiEasy', [
             this._partStore.keepRange(range.from, range.to);
             this.getParent().updateParts();
         },
-        onRun : function(event) {
-            Logger.getInstance().debug('onRun()');
-            var filename = CommonDialog.getSaveFileName(this, true);
-            if (! filename) {
-                return;
-            }
+        createBatch : function(batchFilename, filename) {
+            Logger.getInstance().debug('createBatch(' + batchFilename + ', ' + filename + ')');
             var parent = this.getParent();
             var seekDelayMs = 0;
             var parts = parent.getPartsPanel().computeParts();
             var commands = FFgui.createCommands(parent.getConfig(), parent.getFFmpeg(), filename, parts,
                     parent.getFFmpegConfigFrame().getTabsOptions(), seekDelayMs);
-            var batchFilename = parent.getConfig().createTempFilename('ffgui.bat');
             var batchFile = new File(batchFilename);
             var output = new OutputStreamWriter(new FileOutputStream(batchFile));
             output.writeLine('REM FFgui batch file');
@@ -486,6 +491,23 @@ define('spyl/ffgui/FFguiEasy', [
             }
             output.writeLine('PAUSE');
             output.close();
+        },
+        onCreateBatch : function(event) {
+            Logger.getInstance().debug('onCreateBatch()');
+            var filename = CommonDialog.getSaveFileName(this, true);
+            if (! filename) {
+                return;
+            }
+            this.createBatch(filename, 'OUT');
+        },
+        onRun : function(event) {
+            Logger.getInstance().debug('onRun()');
+            var filename = CommonDialog.getSaveFileName(this, true);
+            if (! filename) {
+                return;
+            }
+            var batchFilename = parent.getConfig().createTempFilename('ffgui.bat');
+            this.createBatch(batchFilename, filename);
             w32Window.shellExecute(batchFilename);
         },
         updateParts : function() {
@@ -521,10 +543,8 @@ define('spyl/ffgui/FFguiEasy', [
                 this._endMark = this._beginMark;
                 this._beginMark = from;
             }
-            /*
-            this._beginMarkLabel.setAttribute('text', FFmpeg.formatTime(this._beginMark));
-            this._endMarkLabel.setAttribute('text', FFmpeg.formatTime(this._endMark));
-            */
+            this._beginMarkBtn.setAttribute('text', '[ ' + FFmpeg.formatTime(this._beginMark));
+            this._endMarkBtn.setAttribute('text', FFmpeg.formatTime(this._endMark) + ' ]');
         },
         setBeginMark : function(time) {
             Logger.getInstance().debug('PreviewPanel.setBeginMark(' + FFmpeg.formatTime(time) + ')');
@@ -846,7 +866,8 @@ define('spyl/ffgui/FFguiEasy', [
             };
 
             var addButton = new Button({attributes: {text: 'Add...'}, style: {width: '12fw', height: Config.BUTTON_HEIGHT}}, partsToolPanel);
-            var sourcesButton = new Button({attributes: {text: 'Sources'}, style: {width: '12fw', height: Config.BUTTON_HEIGHT, right: 0}}, partsToolPanel);
+            var sourcesButton = new Button({attributes: {text: 'Sources'}, style: {width: '12fw', height: Config.BUTTON_HEIGHT}}, partsToolPanel);
+            //var menuButton = new Button({attributes: {text: MENU_CHAR}, style: {width: '3fw', height: Config.BUTTON_HEIGHT}}, partsToolPanel);
             addButton.observe('click', this.onAddSources.bind(this));
             sourcesButton.observe('click', this.showSourcesFrame.bind(this));
 
@@ -866,6 +887,7 @@ define('spyl/ffgui/FFguiEasy', [
 
             var encodingMenu = new MenuItem({label: 'Output', popup: true}, this._menu);
             new MenuItem({label: 'Parameters', event: 'encodingParameters'}, encodingMenu);
+            new MenuItem({label: 'Create Batch...', event: 'encodingCreateBatchAs'}, encodingMenu);
             new MenuItem({label: 'Export...', event: 'encodingExportAs'}, encodingMenu);
 
             var aboutMenu = new MenuItem({label: '?', popup: true}, this._menu);
@@ -882,12 +904,20 @@ define('spyl/ffgui/FFguiEasy', [
             this._menu.observe('showSources', this.showSourcesFrame.bind(this));
 
             this._menu.observe('encodingParameters', this.showFmpegConfigFrame.bind(this));
+            this._menu.observe('encodingCreateBatchAs', this._previewPanel.onCreateBatch.bind(this._previewPanel));
             this._menu.observe('encodingExportAs', this._previewPanel.onRun.bind(this._previewPanel));
             
             this._menu.observe('helpFFplay', this.onHelpFFplay.bind(this));
             this._menu.observe('about', this.onAbout.bind(this));
 
             this.setMenu(this._menu);
+            
+            /*var menuVisible = false;
+            menuButton.observe('click', (function() {
+                menuVisible = !menuVisible;
+                System.err.println((menuVisible ? 'show' : 'hide') + ' menu');
+                this.setMenu(menuVisible ? this._menu : null);
+            }).bind(this));*/
         },
         showFmpegConfigFrame : function() {
             this._fmpegConfigFrame.getStyle().setProperty('visibility', 'visible');
@@ -1094,8 +1124,11 @@ define('spyl/ffgui/FFguiEasy', [
             new Label({attributes: {text: about}, style: {width: '100%', height: '100%'}}, frame);
         },
         onAbout : function(event) {
-            var aboutFrame = new Frame({attributes: {title: 'About FFgui', icon: this._icon}}, this);
-            aboutFrame._window.center(320, 200);
+            var aboutFrame = new Frame({
+              attributes: {title: 'About FFgui', icon: this._icon},
+              style: {visibility: 'hidden', width: 400, height: 300}
+            }, this);
+            aboutFrame._window.center(400, 300);
             var vendorUrl = System.getProperty('jls.vendor.url');
             var sysLink = new w32SysLink('  FFgui\n\n' +
                     'Based on <A HREF="' + vendorUrl + '">jls</A>, v.' + System.getProperty('jls.version') + '\n' +
@@ -1107,6 +1140,7 @@ define('spyl/ffgui/FFguiEasy', [
                     w32Window.CONSTANT.WS.CHILD | w32Window.CONSTANT.WS.VISIBLE,
                     0, 0, 0, 0, aboutFrame._window);
             sysLink.maximize(5);
+            aboutFrame.getStyle().setProperty('visibility', 'visible');
         },
         onExit : function(event) {
             Logger.getInstance().debug('onExit()');
