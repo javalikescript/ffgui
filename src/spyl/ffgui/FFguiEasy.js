@@ -203,6 +203,10 @@ define('spyl/ffgui/FFguiEasy', [
             this._parts.push(part);
             return this;
         },
+        insertPart : function(part, at) {
+            this._parts.splice(at, 0, part);
+            return this;
+        },
         removePart : function(index) {
             var part = this._parts[index];
             this._parts.splice(index, 1);
@@ -309,24 +313,26 @@ define('spyl/ffgui/FFguiEasy', [
                 verticalAlign: 'middle', verticalPosition: 'middle', border: 1
             }}, this);
 
-            //var downBtn = new Button({attributes: {text: DOWN_CHAR}, style: {width: Config.BUTTON_HEIGHT, height: Config.BUTTON_HEIGHT}}, infoPanel);
-            //var upBtn = new Button({attributes: {text: UP_CHAR}, style: {width: Config.BUTTON_HEIGHT, height: Config.BUTTON_HEIGHT}}, infoPanel);
-
-            this._infoLabel = new Label({style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, infoPanel);
-            var removeBtn = new Button({
-                attributes: {text: DELETE_CHAR},
-                style: {position: 'absolute', top: Config.GAP_SIZE, right: Config.GAP_SIZE, width: Config.BUTTON_HEIGHT, height: Config.BUTTON_HEIGHT, clear: 'right'}
-            }, infoPanel);
-            this._infoSubLabel = new Label({style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, infoPanel);
             var self = this;
+            this._infoLabel = new Label({style: {width: '1w', height: Config.LABEL_HEIGHT}}, infoPanel);
+            /*var downBtn = new Button({attributes: {text: DOWN_CHAR}, style: {width: Config.BUTTON_HEIGHT, height: Config.BUTTON_HEIGHT}}, infoPanel);
+            var upBtn = new Button({attributes: {text: UP_CHAR}, style: {width: Config.BUTTON_HEIGHT, height: Config.BUTTON_HEIGHT}}, infoPanel);
+            downBtn.observe('click', function() {
+                parent.onMovePart(self, 1);
+            });
+            upBtn.observe('click', function() {
+                parent.onMovePart(self, -1);
+            });*/
+            var removeBtn = new Button({attributes: {text: DELETE_CHAR}, style: {width: Config.BUTTON_HEIGHT, height: Config.BUTTON_HEIGHT, clear: 'right'}}, infoPanel);
+            removeBtn.observe('click', function() {
+                parent.onRemovePart(self);
+            });
+            this._infoSubLabel = new Label({style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, infoPanel);
             infoPanel.observe('click', function(event) {
                 parent.onSelectPart(self);
             });
             this.observe('click', function(event) {
                 parent.onSelectPart(self);
-            });
-            removeBtn.observe('click', function() {
-                parent.onRemovePart(self);
             });
             this._previewPart = null;
         },
@@ -372,6 +378,22 @@ define('spyl/ffgui/FFguiEasy', [
             var index = this.getChildIndex(partPanel);
             //this.removeChild(index);
             this._partStore.removePart(index);
+            this.getParent().getParent().updateParts();
+        },
+        onMovePart : function(partPanel, delta) {
+            var index = this.getChildIndex(partPanel);
+            var newIndex = index + delta;
+            var parts = this._partStore.getParts();
+            if ((newIndex < 0) || (newIndex >= parts.length)) {
+                return;
+            }
+            var part = parts[index];
+            parts[index] = parts[newIndex];
+            parts[newIndex] = part;
+            /*
+            var part = this._partStore.removePart(index);
+            this._partStore.insertPart(part, newIndex);
+            */
             this.getParent().getParent().updateParts();
         },
         updateParts : function() {
