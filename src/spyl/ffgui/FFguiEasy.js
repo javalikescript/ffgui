@@ -444,6 +444,11 @@ define('spyl/ffgui/FFguiEasy', [
 
             ffmpegConfigButton.observe('click', parent.showFmpegConfigFrame.bind(parent));
             runButton.observe('click', this.onRun.bind(this));
+            
+            var splashFile = new File('splash.bmp');
+            if (splashFile.exists()) {
+                this.setImageFile(splashFile.getPath());
+            }
         },
         onCut : function(event) {
             this._partStore.cut(this.getTime());
@@ -529,6 +534,9 @@ define('spyl/ffgui/FFguiEasy', [
                 this.setTime(t);
             }
         },
+        setImageFile : function(path) {
+            this._image.setAttribute('image', path);
+        },
         updateImageAt : function(t) {
             var self = this;
             this._partStore.extractFrame(t).done(function(file) {
@@ -600,10 +608,11 @@ define('spyl/ffgui/FFguiEasy', [
         initialize : function($super, parameters, parent) {
             $super(parameters, parent);
 
-            new Label({attributes: {text: this._source.getFile().getName()}, style: {width: '1w', height: Config.LABEL_HEIGHT}}, this);
+            new Label({attributes: {text: this._source.getFile().getName()}, style: {width: '1w', height: '1em'}}, this);
             //var infoBtn = new Button({attributes: {text: 'i'}, style: {width: Config.DEFAULT_HEIGHT, height: Config.DEFAULT_HEIGHT}}, this);
             var playBtn = new Button({attributes: {text: '>'}, style: {width: Config.BUTTON_HEIGHT, height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
-            this._infoLabel = new Label({style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
+            this._infoLabel = new Label({style: {width: '1w', height: '3em'}}, this);
+            this._image = new Image({attributes: {height: Config.PART_SIZE_PX}}, this);
 
             playBtn.observe('click', this.onPlay.bind(this));
             //infoBtn.observe('click', this.onInfo.bind(this));
@@ -618,6 +627,12 @@ define('spyl/ffgui/FFguiEasy', [
         },
         getSource : function() {
             return this._source;
+        },
+        updateImageAt : function(t) {
+            var self = this;
+            this._source.extractFrame(t).done(function(file) {
+                self._image.setAttribute('image', file.getPath());
+            });
         },
         onPlay : function(event) {
             this._ffmpeg.playWithInfo(this._source.getFile().getPath());
@@ -635,21 +650,21 @@ define('spyl/ffgui/FFguiEasy', [
             this._duration = parseFloat(pr.duration);
             var info = Math.floor(this._duration) + 's';
             if (pr.format_name) {
-                info += '. Format: "' + pr.format_name + '"';
+                info += ', Format: "' + pr.format_name + '"';
             }
             if ('video' in pr.streamByCodecType) {
                 var videoStream = pr.streamByCodecType.video[0];
-                info += '. Video codec: "' + videoStream.codec_name + '"';
+                info += '\nVideo codec: "' + videoStream.codec_name + '"';
                 info += ', ' + videoStream.width + 'x' + videoStream.height;
                 info += ', ' + videoStream.display_aspect_ratio;
             }
             if ('audio' in pr.streamByCodecType) {
                 var audioStream = pr.streamByCodecType.audio[0];
-                info += '. Audio codec: "' + audioStream.codec_name + '"';
+                info += '\nAudio codec: "' + audioStream.codec_name + '"';
                 info += ', ' + audioStream.sample_rate + 'Hz';
             }
-            info += '.';
             this._infoLabel.setAttribute('text', info);
+            this.updateImageAt(Math.min(3000, this._duration));
         },
         updateSource : function(name) {
             switch (name) {
@@ -669,7 +684,7 @@ define('spyl/ffgui/FFguiEasy', [
                 attributes: {title: 'Input Sources', hideOnClose: true, layout: 'jls/gui/CardLayout', icon: FFguiEasy.ICON},
                 style: {visibility: 'hidden', hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, width: 640, height: 480}
             });
-            this._panel = new Panel({style: {hGap: 1, vGap: 1}}, this);
+            this._panel = new Panel({style: {hGap: 1, vGap: 1, overflowY: 'scroll'}}, this);
         },
         addSource : function(source) {
             if (this.getSource(source.getId()) != null) {
@@ -677,7 +692,7 @@ define('spyl/ffgui/FFguiEasy', [
             }
             new SourceInfo({
                 attributes: {ffmpeg: this._ffmpeg, source: source},
-                style: {hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, width: '1w', height: Config.PART_SIZE, border: 1, clear: 'right'}
+                style: {hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, width: '1w', height: 'calc(' + Config.BUTTON_HEIGHT + '+3em+' + (Config.GAP_SIZE*3) + ')', border: 1, clear: 'right'}
             }, this._panel);
         },
         getSource : function(id) {
