@@ -315,14 +315,14 @@ define('spyl/ffgui/FFguiEasy', [
 
             var self = this;
             this._infoLabel = new Label({style: {width: '1w', height: Config.LABEL_HEIGHT}}, infoPanel);
-            /*var downBtn = new Button({attributes: {text: DOWN_CHAR}, style: {width: Config.BUTTON_HEIGHT, height: Config.BUTTON_HEIGHT}}, infoPanel);
+            var downBtn = new Button({attributes: {text: DOWN_CHAR}, style: {width: Config.BUTTON_HEIGHT, height: Config.BUTTON_HEIGHT}}, infoPanel);
             var upBtn = new Button({attributes: {text: UP_CHAR}, style: {width: Config.BUTTON_HEIGHT, height: Config.BUTTON_HEIGHT}}, infoPanel);
             downBtn.observe('click', function() {
                 parent.onMovePart(self, 1);
             });
             upBtn.observe('click', function() {
                 parent.onMovePart(self, -1);
-            });*/
+            });
             var removeBtn = new Button({attributes: {text: DELETE_CHAR}, style: {width: Config.BUTTON_HEIGHT, height: Config.BUTTON_HEIGHT, clear: 'right'}}, infoPanel);
             removeBtn.observe('click', function() {
                 parent.onRemovePart(self);
@@ -397,7 +397,8 @@ define('spyl/ffgui/FFguiEasy', [
             this.getParent().getParent().updateParts();
         },
         updateParts : function() {
-            this.removeChildren();
+            this._childrenBackup = [].concat(this.getChildren()); // keep away from gc
+            this.removeChildren(); // will be removed later
             var previews = this._partStore.getPreviewParts();
             for (var i = 0; i < previews.length; i++) {
                 var preview = previews[i];
