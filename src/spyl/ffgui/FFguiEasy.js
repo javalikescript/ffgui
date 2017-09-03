@@ -407,14 +407,36 @@ define('spyl/ffgui/FFguiEasy', [
             this.getParent().getParent().updateParts();
         },
         updateParts : function() {
-            this._childrenBackup = [].concat(this.getChildren()); // keep away from gc
+            var previews = this._partStore.getPreviewParts();
+            this.invalidate(true);
+            // clean child part windows if necessary
+            while (this.getChildCount() > previews.length) {
+                this.removeChild(this.getChildCount() - 1);
+            }
+            // set/add parts
+            for (var i = 0; i < previews.length; i++) {
+                var preview = previews[i];
+                if (i < this.getChildCount()) {
+                    this.getChild(i).setPreviewPart(preview);
+                } else {
+                    this.addPreviewPart(preview);
+                }
+            }
+            this.update();
+        },
+        /*
+        // The following code reproduce a bug when removing windows
+        updateParts : function() {
+            //this._childrenBackup = [].concat(this.getChildren()); // keep away from gc
             this.removeChildren(); // will be removed later
             var previews = this._partStore.getPreviewParts();
             for (var i = 0; i < previews.length; i++) {
                 var preview = previews[i];
                 this.addPreviewPart(preview);
             }
+            this.update();
         },
+        */
         computeParts : function() {
             var computedParts = [];
             var parts = this._partStore.getParts();
@@ -1122,14 +1144,6 @@ define('spyl/ffgui/FFguiEasy', [
             partPanel.getStyle().setProperty('border', 0);
             this._previewPanel.setTime(partPanel.getPreviewPart().getOffset());
         },
-        onUnload : function(event) {
-            Logger.getInstance().debug('onUnload()');
-            this._config.save();
-            //this._consoleTab.shutdown();
-            this._ffmpeg.shutdown();
-            this._fmpegConfigFrame.onDestroy();
-            this._sourcesFrame.onDestroy();
-        },
         onOpenProject : function(event) {
             var filename = CommonDialog.getOpenFileName(this);
             if (filename) {
@@ -1202,6 +1216,14 @@ define('spyl/ffgui/FFguiEasy', [
         onExit : function(event) {
             Logger.getInstance().debug('onExit()');
             this.onDestroy();
+        },
+        onUnload : function(event) {
+            Logger.getInstance().debug('onUnload()');
+            this._config.save();
+            //this._consoleTab.shutdown();
+            this._ffmpeg.shutdown();
+            this._fmpegConfigFrame.onDestroy();
+            this._sourcesFrame.onDestroy();
         }
     });
     
