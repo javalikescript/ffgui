@@ -506,9 +506,9 @@ define('spyl/ffgui/FFgui', [
 
     Object.extend(FFgui, {
         extractEncoders : function(ffmpeg) {
-            System.out.println('Loading ffmpeg formats...');
+            System.err.println('Loading ffmpeg formats...');
             var formats = ffmpeg.extractFormats();
-            System.out.println('Loading ffmpeg codecs...');
+            System.err.println('Loading ffmpeg codecs...');
             var codecs = ffmpeg.extractCodecs();
             var encoder = {
                     audio: codecs.audio.encoder,

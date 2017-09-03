@@ -67,6 +67,11 @@ define('spyl/ffgui/FFguiEasy', [
     var UP_CHAR = '\u2191';
     var MENU_CHAR = '\u2630';
     var SCISSORS_CHAR = '\u2702';
+    var PART_CHAR = '-'; //'\u279b'; //'\u2796'; //'-';
+    var SEPARATOR_CHAR = '\u2759'; //'\u2758';
+    var PLAY_CHAR = '\u276f'; //'>';
+    var PREVIOUS_CHAR = '\u276e'; //'\u276c'; //'<';
+    var NEXT_CHAR = '\u276f'; //'\u276d'; //'>';
 
     var SourceStore = Class.create({
         initialize : function(ffmpeg, config) {
@@ -178,6 +183,9 @@ define('spyl/ffgui/FFguiEasy', [
     var PartStore = Class.create({
         initialize : function() {
             this._parts = [];
+        },
+        getPartsCount : function() {
+            return this._parts.length;
         },
         getParts : function() {
             return this._parts;
@@ -315,14 +323,14 @@ define('spyl/ffgui/FFguiEasy', [
 
             var self = this;
             this._infoLabel = new Label({style: {width: '1w', height: Config.LABEL_HEIGHT}}, infoPanel);
-            var downBtn = new Button({attributes: {text: DOWN_CHAR}, style: {width: Config.BUTTON_HEIGHT, height: Config.BUTTON_HEIGHT}}, infoPanel);
             var upBtn = new Button({attributes: {text: UP_CHAR}, style: {width: Config.BUTTON_HEIGHT, height: Config.BUTTON_HEIGHT}}, infoPanel);
-            downBtn.observe('click', function() {
-                parent.onMovePart(self, 1);
-            });
             upBtn.observe('click', function() {
                 parent.onMovePart(self, -1);
             });
+            /*var downBtn = new Button({attributes: {text: DOWN_CHAR}, style: {width: Config.BUTTON_HEIGHT, height: Config.BUTTON_HEIGHT}}, infoPanel);
+            downBtn.observe('click', function() {
+                parent.onMovePart(self, 1);
+            });*/
             var removeBtn = new Button({attributes: {text: DELETE_CHAR}, style: {width: Config.BUTTON_HEIGHT, height: Config.BUTTON_HEIGHT, clear: 'right'}}, infoPanel);
             removeBtn.observe('click', function() {
                 parent.onRemovePart(self);
@@ -343,7 +351,9 @@ define('spyl/ffgui/FFguiEasy', [
             }
             var self = this;
             previewPart.extractFrame(previewPart.getOffset()).done(function(file) {
-                self._image.setAttribute('image', file.getPath());
+                if (self._image.exists()) {
+                    self._image.setAttribute('image', file.getPath());
+                }
             });
             this._infoLabel.setAttribute('text', 'At ' + FFmpeg.formatTime(previewPart.getOffset()));
             this._infoSubLabel.setAttribute('text', 'Duration ' + FFmpeg.formatTime(previewPart.getDuration()));
@@ -383,17 +393,17 @@ define('spyl/ffgui/FFguiEasy', [
         onMovePart : function(partPanel, delta) {
             var index = this.getChildIndex(partPanel);
             var newIndex = index + delta;
-            var parts = this._partStore.getParts();
-            if ((newIndex < 0) || (newIndex >= parts.length)) {
+            if ((newIndex < 0) || (newIndex === index) || (newIndex >= this._partStore.getPartsCount())) {
                 return;
             }
+            /*
+            var parts = this._partStore.getParts();
             var part = parts[index];
             parts[index] = parts[newIndex];
             parts[newIndex] = part;
-            /*
+            */
             var part = this._partStore.removePart(index);
             this._partStore.insertPart(part, newIndex);
-            */
             this.getParent().getParent().updateParts();
         },
         updateParts : function() {
@@ -433,13 +443,14 @@ define('spyl/ffgui/FFguiEasy', [
             this._image = new Image({style: {border: true, clear: 'right'}}, this);
             
             var TIME_WIDTH = '12fw';
+            var MARK_WIDTH = '14fw';
             
             this._timeEdit = new Edit({attributes: {text: ''}, style: {width: TIME_WIDTH, height: Config.EDIT_HEIGHT, border: 1}}, this);
             this._endTimeLabel = new Label({style: {width: TIME_WIDTH, height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
-            var previous1mBtn = new Button({attributes: {text: '<<'}, style: {width: '4fw', height: Config.BUTTON_HEIGHT}}, this);
-            var previous1sBtn = new Button({attributes: {text: '<'}, style: {width: '3fw', height: Config.BUTTON_HEIGHT}}, this);
-            var next1sBtn = new Button({attributes: {text: '>'}, style: {width: '3fw', height: Config.BUTTON_HEIGHT}}, this);
-            var next1mBtn = new Button({attributes: {text: '>>'}, style: {width: '4fw', height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
+            var previous1mBtn = new Button({attributes: {text: PREVIOUS_CHAR + PREVIOUS_CHAR}, style: {width: '4fw', height: Config.BUTTON_HEIGHT}}, this);
+            var previous1sBtn = new Button({attributes: {text: PREVIOUS_CHAR}, style: {width: '3fw', height: Config.BUTTON_HEIGHT}}, this);
+            var next1sBtn = new Button({attributes: {text: NEXT_CHAR}, style: {width: '3fw', height: Config.BUTTON_HEIGHT}}, this);
+            var next1mBtn = new Button({attributes: {text: NEXT_CHAR + NEXT_CHAR}, style: {width: '4fw', height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
 
             this._timeEdit.observe('change', this.onTimeChange.bind(this));
             previous1mBtn.observe('click', this.moveTime.bind(this, -60000));
@@ -447,18 +458,20 @@ define('spyl/ffgui/FFguiEasy', [
             next1sBtn.observe('click', this.moveTime.bind(this, 3000));
             next1mBtn.observe('click', this.moveTime.bind(this, 60000));
 
+            new Label({attributes: {text: 'Mark:'}, style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
+            this._beginMarkBtn = new Button({attributes: {text: 'Set begin mark'}, style: {width: MARK_WIDTH, height: Config.BUTTON_HEIGHT}}, this);
+            this._endMarkBtn = new Button({attributes: {text: 'Set end mark'}, style: {width: MARK_WIDTH, height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
+
             new Label({attributes: {text: 'Edition:'}, style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
+            var cutButton = new Button({attributes: {text: 'Cut ' + SCISSORS_CHAR + ' ' + PART_CHAR + SEPARATOR_CHAR + PART_CHAR}, style: {width: MARK_WIDTH, height: Config.BUTTON_HEIGHT}}, this);
+            var removeSelectionButton = new Button({attributes: {text: 'Remove ' + PART_CHAR + '[' + DELETE_CHAR + ']' + PART_CHAR}, style: {width: MARK_WIDTH, height: Config.BUTTON_HEIGHT}}, this);
+            var keepSelectionButton = new Button({attributes: {text: 'Extract ' + DELETE_CHAR + '[' + PART_CHAR + ']' + DELETE_CHAR}, style: {width: MARK_WIDTH, height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
 
-            var cutButton = new Button({attributes: {text: SCISSORS_CHAR + ' Cut'}, style: {width: '1w', height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
-            cutButton.observe('click', this.onCut.bind(this));
-
-            this._beginMarkBtn = new Button({attributes: {text: 'Set begin mark'}, style: {width: '1w', height: Config.BUTTON_HEIGHT}}, this);
-            this._endMarkBtn = new Button({attributes: {text: 'Set end mark'}, style: {width: '1w', height: Config.BUTTON_HEIGHT}}, this);
-            var removeSelectionButton = new Button({attributes: {text: '[' + DELETE_CHAR + ']'}, style: {width: '5fw', height: Config.BUTTON_HEIGHT}}, this);
-            var keepSelectionButton = new Button({attributes: {text: DELETE_CHAR + '[ ]' + DELETE_CHAR}, style: {width: '5fw', height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
             this._beginMarkBtn.observe('click', this.onSetBeginMark.bind(this));
             this._endMarkBtn.observe('click', this.onSetEndMark.bind(this));
+
             removeSelectionButton.observe('click', this.onRemoveSelection.bind(this));
+            cutButton.observe('click', this.onCut.bind(this));
             keepSelectionButton.observe('click', this.onKeepSelection.bind(this));
 
             new Label({attributes: {text: 'Encoding:'}, style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
@@ -563,7 +576,9 @@ define('spyl/ffgui/FFguiEasy', [
         updateImageAt : function(t) {
             var self = this;
             this._partStore.extractFrame(t).done(function(file) {
-                self._image.setAttribute('image', file.getPath());
+                if (self._image.exists()) {
+                    self._image.setAttribute('image', file.getPath());
+                }
             });
         },
         updateMark : function() {
@@ -633,7 +648,7 @@ define('spyl/ffgui/FFguiEasy', [
 
             new Label({attributes: {text: this._source.getFile().getName()}, style: {width: '1w', height: '1em'}}, this);
             //var infoBtn = new Button({attributes: {text: 'i'}, style: {width: Config.DEFAULT_HEIGHT, height: Config.DEFAULT_HEIGHT}}, this);
-            var playBtn = new Button({attributes: {text: '>'}, style: {width: Config.BUTTON_HEIGHT, height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
+            var playBtn = new Button({attributes: {text: PLAY_CHAR}, style: {width: Config.BUTTON_HEIGHT, height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
             this._infoLabel = new Label({style: {width: '1w', height: '3em'}}, this);
             this._image = new Image({attributes: {height: Config.PART_SIZE_PX}}, this);
 
@@ -654,7 +669,9 @@ define('spyl/ffgui/FFguiEasy', [
         updateImageAt : function(t) {
             var self = this;
             this._source.extractFrame(t).done(function(file) {
-                self._image.setAttribute('image', file.getPath());
+                if (self._image.exists()) {
+                    self._image.setAttribute('image', file.getPath());
+                }
             });
         },
         onPlay : function(event) {
