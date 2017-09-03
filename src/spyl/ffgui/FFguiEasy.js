@@ -65,13 +65,13 @@ define('spyl/ffgui/FFguiEasy', [
     var DELETE_CHAR = '\u00d7'; // '\u2715'; // '\u2a2f'; // '\u24e7'; // '\u2717'; // '\u2613'; //
     var DOWN_CHAR = '\u2193';
     var UP_CHAR = '\u2191';
-    var MENU_CHAR = '\u2630';
-    var SCISSORS_CHAR = '\u2702';
-    var PART_CHAR = '-'; //'\u279b'; //'\u2796'; //'-';
-    var SEPARATOR_CHAR = '\u2759'; //'\u2758';
-    var PLAY_CHAR = '\u276f'; //'>';
-    var PREVIOUS_CHAR = '\u276e'; //'\u276c'; //'<';
-    var NEXT_CHAR = '\u276f'; //'\u276d'; //'>';
+    //var MENU_CHAR = '\u2630';
+    //var SCISSORS_CHAR = '\u2702'; //
+    var PART_CHAR = '-'; //'\u279b'; //'\u2796'; //'-'; //
+    var SEPARATOR_CHAR = '|'; //'\u2759'; //'\u2758'; //
+    var PLAY_CHAR = '>'; //'\u276f'; //'>'; //
+    var PREVIOUS_CHAR = '<'; //'\u276e'; //'\u276c'; //'<'; //
+    var NEXT_CHAR = '>'; //'\u276f'; //'\u276d'; //'>'; //
 
     var SourceStore = Class.create({
         initialize : function(ffmpeg, config) {
@@ -485,7 +485,7 @@ define('spyl/ffgui/FFguiEasy', [
             this._endMarkBtn = new Button({attributes: {text: 'Set end mark'}, style: {width: MARK_WIDTH, height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
 
             new Label({attributes: {text: 'Edition:'}, style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
-            var cutButton = new Button({attributes: {text: 'Cut ' + SCISSORS_CHAR + ' ' + PART_CHAR + SEPARATOR_CHAR + PART_CHAR}, style: {width: MARK_WIDTH, height: Config.BUTTON_HEIGHT}}, this);
+            var cutButton = new Button({attributes: {text: 'Cut ' + PART_CHAR + SEPARATOR_CHAR + PART_CHAR}, style: {width: MARK_WIDTH, height: Config.BUTTON_HEIGHT}}, this);
             var removeSelectionButton = new Button({attributes: {text: 'Remove ' + PART_CHAR + '[' + DELETE_CHAR + ']' + PART_CHAR}, style: {width: MARK_WIDTH, height: Config.BUTTON_HEIGHT}}, this);
             var keepSelectionButton = new Button({attributes: {text: 'Extract ' + DELETE_CHAR + '[' + PART_CHAR + ']' + DELETE_CHAR}, style: {width: MARK_WIDTH, height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
 
@@ -570,7 +570,7 @@ define('spyl/ffgui/FFguiEasy', [
             if (! filename) {
                 return;
             }
-            var batchFilename = parent.getConfig().createTempFilename('ffgui.bat');
+            var batchFilename = this.getParent().getConfig().createTempFilename('ffgui.bat');
             this.createBatch(batchFilename, filename);
             w32Window.shellExecute(batchFilename);
         },
@@ -1047,8 +1047,11 @@ define('spyl/ffgui/FFguiEasy', [
             this._fmpegConfigFrame.load(project.destination);
             var idMap = {};
             for (var id in project.sources) {
-                var source = this.addSourceFile(new File(project.sources[id]), false);
-                idMap[id] = source.getId();
+                var sourceFile = new File(project.sources[id]);
+                if (sourceFile.exists()) {
+                    var source = this.addSourceFile(sourceFile, false);
+                    idMap[id] = source.getId();
+                }
             }
             for (var id in project.parts) {
                 var part = project.parts[id];
