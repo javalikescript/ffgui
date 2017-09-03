@@ -534,7 +534,7 @@ define('spyl/ffgui/FFguiEasy', [
             Logger.getInstance().debug('createBatch(' + batchFilename + ', ' + filename + ')');
             var parent = this.getParent();
             var seekDelayMs = 0;
-            var parts = parent.getPartsPanel().computeParts();
+            var parts = parent.computeParts();
             var commands = FFgui.createCommands(parent.getConfig(), parent.getFFmpeg(), filename, parts,
                     parent.getFFmpegConfigFrame().getTabsOptions(), seekDelayMs);
             var batchFile = new File(batchFilename);
@@ -739,16 +739,14 @@ define('spyl/ffgui/FFguiEasy', [
         }
     });
 
-    var SourcesFrame = Class.create(Frame, {
-        initialize : function($super, ffmpeg, config, sourceStore) {
+    var SourcesPanel = Class.create(Panel, {
+        initialize : function($super, parameters, parent, ffmpeg, config, sourceStore) {
             this._ffmpeg = ffmpeg;
             this._config = config;
             this._sourceStore = sourceStore;
-            $super({
-                attributes: {title: 'Input Sources', hideOnClose: true, layout: 'jls/gui/CardLayout', icon: FFguiEasy.ICON},
-                style: {visibility: 'hidden', hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, width: 640, height: 480}
-            });
-            this._panel = new Panel({style: {hGap: 1, vGap: 1, overflowY: 'scroll'}}, this);
+            $super(TemplateContainer.mergeParameters({
+                style: {hGap: 1, vGap: 1, overflowY: 'scroll'}
+            }, parameters), parent);
         },
         addSource : function(source) {
             if (this.getSource(source.getId()) != null) {
@@ -757,11 +755,11 @@ define('spyl/ffgui/FFguiEasy', [
             new SourceInfo({
                 attributes: {ffmpeg: this._ffmpeg, source: source},
                 style: {hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, width: '1w', height: 'calc(' + Config.BUTTON_HEIGHT + '+3em+' + (Config.GAP_SIZE*3) + ')', border: 1, clear: 'right'}
-            }, this._panel);
+            }, this);
         },
         getSource : function(id) {
-            for (var i = 0; i < this._panel.getChildCount(); i++) {
-                var child = this._panel.getChild(i);
+            for (var i = 0; i < this.getChildCount(); i++) {
+                var child = this.getChild(i);
                 if (child.getSource().getId() == id) {
                     return child;
                 }
@@ -774,6 +772,61 @@ define('spyl/ffgui/FFguiEasy', [
                 return;
             }
             source.updateSource(name);
+        }
+    });
+
+    var SourcesFrame = Class.create(Frame, {
+        initialize : function($super, ffmpeg, config, sourceStore) {
+            $super({
+                attributes: {title: 'Input Sources', hideOnClose: true, icon: FFguiEasy.ICON},
+                style: {visibility: 'hidden', hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, width: 640, height: 480}
+            });
+            this._panel = new SourcesPanel({}, this, ffmpeg, config, sourceStore);
+        },
+        getSourcesPanel : function() {
+            return this._panel;
+        }
+    });
+
+    var OverviewTabPanel = Class.create(Panel, {
+        initialize : function($super, parameters, parent) {
+            $super(TemplateContainer.mergeParameters({
+                attributes: {layout: 'jls/gui/CardLayout'},
+                style: {hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE}
+            }, parameters), parent);
+            this._tab = new Tab({attributes: {selectOnAdd: false}}, this);
+            this._sourcesPanel = new SourcesPanel({
+                attributes: {title: 'Sources'}
+            }, this, ffmpeg, config, sourceStore);
+            
+        }
+    });
+    
+    var OverviewPanel = Class.create(Panel, {
+        initialize : function($super, partStore, parameters, parent) {
+            $super(TemplateContainer.mergeParameters({
+                attributes: {layout: 'jls/gui/BorderLayout'}
+            }, parameters), parent);
+            var partsToolPanel = new Panel({
+                style: {hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, region: 'top', height: 'calc(' + Config.BUTTON_HEIGHT + '+' + (Config.GAP_SIZE*2+2) + ')'}
+            }, this);
+            this._partsPanel = new PartsPanel(partStore, {
+                style: {hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, border: 1, region: 'center', overflowY: 'scroll'}
+            }, this);
+            this._partsPanel.onSelectPart = function(partPanel) {
+                parent.onSelectPart(partPanel);
+            };
+            var addButton = new Button({attributes: {text: 'Add...'}, style: {width: '12fw', height: Config.BUTTON_HEIGHT}}, partsToolPanel);
+            var sourcesButton = new Button({attributes: {text: BOX_CHAR + ' Sources'}, style: {width: '12fw', height: Config.BUTTON_HEIGHT}}, partsToolPanel);
+            //var menuButton = new Button({attributes: {text: MENU_CHAR}, style: {width: '3fw', height: Config.BUTTON_HEIGHT}}, partsToolPanel);
+            addButton.observe('click', parent.onAddSources.bind(parent));
+            sourcesButton.observe('click', parent.showSourcesFrame.bind(parent));
+        },
+        computeParts : function() {
+            return this._partsPanel.computeParts();
+        },
+        updateParts : function() {
+            this._partsPanel.updateParts();
         }
     });
     
@@ -889,14 +942,19 @@ define('spyl/ffgui/FFguiEasy', [
     var LoadingFrame = Class.create(Frame, {
         initialize : function($super) {
             $super({
-                attributes: {title: 'Loading FFgui', hideOnClose: true, icon: FFguiEasy.ICON}
+                attributes: {title: 'Loading FFgui', hideOnClose: true, icon: FFguiEasy.ICON},
+                style: {textAlign: 'center', verticalAlign: 'middle', verticalPosition: 'middle', visibility: 'hidden'}
             });
             this._step = 0;
-            this._label = new Label({attributes: {text: 'Please wait'}, style: {width: '1w', height: '1em', clear: 'right'}}, this);
+            this._label = new Label(
+                {attributes: {text: 'Please wait'},
+                style: {width: '90%', height: '1em', clear: 'right'}
+            }, this);
             var w = 320; //FlowLayout.computeSizeFor(this, '26fw');
             var h = 128; //FlowLayout.computeSizeFor(this, '6em');
             this._window.center(w, h);
             this.setSize([w, h]);
+            //this.show();
         },
         hide : function() {
             this.getStyle().setProperty('visibility', 'hidden');
@@ -915,7 +973,7 @@ define('spyl/ffgui/FFguiEasy', [
                 this._step = 0;
                 this.getStyle().setProperty('visibility', 'visible');
             } else {
-                refresh();
+                this.refresh();
             }
         }
     });
@@ -935,7 +993,6 @@ define('spyl/ffgui/FFguiEasy', [
             this.postInit();
             this._fmpegConfigFrame = new FFmpegConfigFrame(this._config, configTabs);
             this._sourcesFrame = new SourcesFrame(this._ffmpeg, this._config, this._sourceStore);
-            this._loadingFrame.hide();
         },
         show : function() {
             this.getStyle().setProperty('visibility', 'visible');
@@ -958,36 +1015,16 @@ define('spyl/ffgui/FFguiEasy', [
         getLoadingFrame : function() {
             return this._loadingFrame;
         },
-        getPartsPanel : function() {
-            return this._partsPanel;
-        },
         postInit : function() {
             this.observe('unload', this.onUnload.bind(this));
             Config.PART_SIZE_PX = FlowLayout.computeSizeFor(this, Config.PART_SIZE);
-            var centerPanel = new Panel({
-                attributes: {layout: 'jls/gui/BorderLayout'}, style: {region: 'center'}
+            this._overviewPanel = new OverviewPanel(this._partStore, {
+                style: {region: 'center'}
             }, this);
-            var partsToolPanel = new Panel({
-                style: {hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, region: 'top', height: 'calc(' + Config.BUTTON_HEIGHT + '+' + (Config.GAP_SIZE*2+2) + ')'}
-            }, centerPanel);
-            this._partsPanel = new PartsPanel(this._partStore, {
-                style: {hGap: Config.GAP_SIZE, vGap: Config.GAP_SIZE, border: 1, region: 'center', overflowY: 'scroll'}
-            }, centerPanel);
             this._previewPanel = new PreviewPanel({
                 style: {border: 1, region: 'left', width: 320, splitter: 'true'}
             }, this);
             
-            var self = this;
-            this._partsPanel.onSelectPart = function(partPanel) {
-                self.onSelectPart(partPanel);
-            };
-
-            var addButton = new Button({attributes: {text: 'Add...'}, style: {width: '12fw', height: Config.BUTTON_HEIGHT}}, partsToolPanel);
-            var sourcesButton = new Button({attributes: {text: BOX_CHAR + ' Sources'}, style: {width: '12fw', height: Config.BUTTON_HEIGHT}}, partsToolPanel);
-            //var menuButton = new Button({attributes: {text: MENU_CHAR}, style: {width: '3fw', height: Config.BUTTON_HEIGHT}}, partsToolPanel);
-            addButton.observe('click', this.onAddSources.bind(this));
-            sourcesButton.observe('click', this.showSourcesFrame.bind(this));
-
             this._menu = MenuItem.createMenu();
             var fileMenu = new MenuItem({label: 'Project', popup: true}, this._menu);
             new MenuItem({label: 'Open...', event: 'openProject'}, fileMenu);
@@ -1042,15 +1079,18 @@ define('spyl/ffgui/FFguiEasy', [
         showSourcesFrame : function() {
             this._sourcesFrame.getStyle().setProperty('visibility', 'visible');
         },
+        computeParts : function() {
+            this._overviewPanel.computeParts();
+        },
         updateParts : function() {
             // TODO Refresh panels
-            this._partsPanel.updateParts();
+            this._overviewPanel.updateParts();
             this._previewPanel.updateParts();
         },
         addSourceFile : function(file, addPart) {
             Logger.getInstance().info('addSourceFile(' + file.getPath() + ')');
             var source = this._sourceStore.addSourceFile(file);
-            this._sourcesFrame.addSource(source);
+            this._sourcesFrame.getSourcesPanel().addSource(source);
             if (addPart) {
                 var from = 0;
                 var to = Math.floor(source.getDuration() / 1000) * 1000;
@@ -1361,6 +1401,7 @@ define('spyl/ffgui/FFguiEasy', [
                     ui.updateParts();
                 }
                 ui.show();
+                ui.getLoadingFrame().hide();
             });
         }
     });
