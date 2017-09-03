@@ -886,8 +886,43 @@ define('spyl/ffgui/FFguiEasy', [
         }
     });
     
+    var LoadingFrame = Class.create(Frame, {
+        initialize : function($super) {
+            $super({
+                attributes: {title: 'Loading FFgui', hideOnClose: true, icon: FFguiEasy.ICON}
+            });
+            this._step = 0;
+            this._label = new Label({attributes: {text: 'Please wait'}, style: {width: '1w', height: '1em', clear: 'right'}}, this);
+            var w = 320; //FlowLayout.computeSizeFor(this, '26fw');
+            var h = 128; //FlowLayout.computeSizeFor(this, '6em');
+            this._window.center(w, h);
+            this.setSize([w, h]);
+        },
+        hide : function() {
+            this.getStyle().setProperty('visibility', 'hidden');
+        },
+        refresh : function() {
+            this._step = (this._step + 1) % 4;
+            var text = 'Please wait';
+            for (var i = 0; i < this._step; i++) {
+                text += '.';
+            }
+            Logger.getInstance().debug('refresh() => ' + text);
+            this._label.setText(text);
+        },
+        show : function() {
+            if (this.getStyle().getPropertyValue('visibility') !== 'visible') {
+                this._step = 0;
+                this.getStyle().setProperty('visibility', 'visible');
+            } else {
+                refresh();
+            }
+        }
+    });
+    
     var FFguiEasyFrame = Class.create(Frame, {
         initialize : function($super, config, configTabs, ffmpeg) {
+            this._loadingFrame = new LoadingFrame();
             this._config = config;
             this._ffmpeg = ffmpeg;
             this._sourceStore = new SourceStore(this._ffmpeg, this._config);
@@ -900,6 +935,7 @@ define('spyl/ffgui/FFguiEasy', [
             this.postInit();
             this._fmpegConfigFrame = new FFmpegConfigFrame(this._config, configTabs);
             this._sourcesFrame = new SourcesFrame(this._ffmpeg, this._config, this._sourceStore);
+            this._loadingFrame.hide();
         },
         show : function() {
             this.getStyle().setProperty('visibility', 'visible');
@@ -918,6 +954,9 @@ define('spyl/ffgui/FFguiEasy', [
         },
         getFFmpegConfigFrame : function() {
             return this._fmpegConfigFrame;
+        },
+        getLoadingFrame : function() {
+            return this._loadingFrame;
         },
         getPartsPanel : function() {
             return this._partsPanel;
@@ -1019,6 +1058,17 @@ define('spyl/ffgui/FFguiEasy', [
             }
             return source;
         },
+        addSourceFiles : function(files, addPart) {
+            this._loadingFrame.show();
+            try {
+                for (var i = 1; i < files.length; i++) {
+                    this._loadingFrame.refresh();
+                    this.addSourceFile(files[i], addPart);
+                }
+            } finally {
+                this._loadingFrame.hide();
+            }
+        },
         onAddSources : function(event) {
             var filenames = CommonDialog.getOpenFileName(this,
                     CommonDialog.OFN_LONGNAMES | CommonDialog.OFN_NOCHANGEDIR | CommonDialog.OFN_EXPLORER | CommonDialog.OFN_ALLOWMULTISELECT);
@@ -1030,9 +1080,11 @@ define('spyl/ffgui/FFguiEasy', [
                 this.addSourceFile(dir, true);
             }
             if (dir.exists()) {
+                var files = [];
                 for (var i = 1; i < filenames.length; i++) {
-                    this.addSourceFile(new File(dir, filenames[i]), true);
+                    files.push(new File(dir, filenames[i]));
                 }
+                this.addSourceFiles(files, true);
             }
             this.updateParts();
         },
@@ -1049,6 +1101,7 @@ define('spyl/ffgui/FFguiEasy', [
             for (var id in project.sources) {
                 var sourceFile = new File(project.sources[id]);
                 if (sourceFile.exists()) {
+                    this._loadingFrame.refresh();
                     var source = this.addSourceFile(sourceFile, false);
                     idMap[id] = source.getId();
                 }
@@ -1066,9 +1119,14 @@ define('spyl/ffgui/FFguiEasy', [
             this.updateParts();
         },
         openProject : function(filename) {
-            var file = new File(filename);
-            var project = Config.loadJSON(file);
-            this.openProjectObject(project);
+            this._loadingFrame.show();
+            try {
+                var file = new File(filename);
+                var project = Config.loadJSON(file);
+                this.openProjectObject(project);
+            } finally {
+                this._loadingFrame.hide();
+            }
         },
         saveProject : function(filename) {
             var file = new File(filename);
@@ -1225,6 +1283,7 @@ define('spyl/ffgui/FFguiEasy', [
             this._config.save();
             //this._consoleTab.shutdown();
             this._ffmpeg.shutdown();
+            this._loadingFrame.onDestroy();
             this._fmpegConfigFrame.onDestroy();
             this._sourcesFrame.onDestroy();
         }
@@ -1246,7 +1305,7 @@ define('spyl/ffgui/FFguiEasy', [
             var configFilename = System.getProperty('spyl.ffgui.configFilename', 'ffgui.json');
             var tabsFilename = System.getProperty('spyl.ffgui.tabsFilename', 'ffgui.tabs.json');
             var args = System.getArguments();
-            var config, ui, configTabs; 
+            var config, configTabs, ui; 
             var ffmpeg = null;
             try {
                 config = new Config(configFilename);
