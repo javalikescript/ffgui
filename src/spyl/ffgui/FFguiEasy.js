@@ -481,9 +481,10 @@ define('spyl/ffgui/FFguiEasy', [
             ffmpegConfigButton.observe('click', parent.showFmpegConfigFrame.bind(parent));
             runButton.observe('click', this.onRun.bind(this));
             
-            var splashFile = new File('splash.bmp');
-            if (splashFile.exists()) {
-                this.setImageFile(splashFile.getPath());
+            var rollFilename = System.getProperty('spyl.ffgui.rollFilename', 'roll.bmp');
+            var rollFile = new File(rollFilename);
+            if (rollFile.exists()) {
+                this.setImageFile(rollFile.getPath());
             }
         },
         onCut : function(event) {
@@ -875,9 +876,9 @@ define('spyl/ffgui/FFguiEasy', [
             });
             this.postInit();
             var self = this;
-            GuiUtilities.invokeLater(function() {
+            //GuiUtilities.invokeLater(function() {
                 self.getStyle().setProperty('visibility', 'visible');
-            });
+            //});
             this._fmpegConfigFrame = new FFmpegConfigFrame(this._config, configTabs);
             this._sourcesFrame = new SourcesFrame(this._ffmpeg, this._config, this._sourceStore);
         },
@@ -986,6 +987,7 @@ define('spyl/ffgui/FFguiEasy', [
             this._previewPanel.updateParts();
         },
         addSourceFile : function(file, addPart) {
+            Logger.getInstance().info('addSourceFile(' + file.getPath() + ')');
             var source = this._sourceStore.addSourceFile(file);
             this._sourcesFrame.addSource(source);
             if (addPart) {
