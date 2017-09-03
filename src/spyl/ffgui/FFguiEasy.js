@@ -65,6 +65,7 @@ define('spyl/ffgui/FFguiEasy', [
     var DELETE_CHAR = '\u00d7'; // '\u2715'; // '\u2a2f'; // '\u24e7'; // '\u2717'; // '\u2613'; //
     var DOWN_CHAR = '\u2193';
     var UP_CHAR = '\u2191';
+    var BOX_CHAR = '\u2610';
     //var MENU_CHAR = '\u2630';
     //var SCISSORS_CHAR = '\u2702'; //
     var PART_CHAR = '-'; //'\u279b'; //'\u2796'; //'-'; //
@@ -497,7 +498,7 @@ define('spyl/ffgui/FFguiEasy', [
             keepSelectionButton.observe('click', this.onKeepSelection.bind(this));
 
             new Label({attributes: {text: 'Encoding:'}, style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
-            var ffmpegConfigButton = new Button({attributes: {text: 'Parameters'}, style: {width: '1w', height: Config.BUTTON_HEIGHT}}, this);
+            var ffmpegConfigButton = new Button({attributes: {text: BOX_CHAR + ' Parameters'}, style: {width: '1w', height: Config.BUTTON_HEIGHT}}, this);
             var runButton = new Button({attributes: {text: 'Export as...'}, style: {width: '1w', height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
 
             ffmpegConfigButton.observe('click', parent.showFmpegConfigFrame.bind(parent));
@@ -897,12 +898,11 @@ define('spyl/ffgui/FFguiEasy', [
                 style: {visibility: 'hidden', splitSize: 5, width: 800, height: 600}
             });
             this.postInit();
-            var self = this;
-            //GuiUtilities.invokeLater(function() {
-                self.getStyle().setProperty('visibility', 'visible');
-            //});
             this._fmpegConfigFrame = new FFmpegConfigFrame(this._config, configTabs);
             this._sourcesFrame = new SourcesFrame(this._ffmpeg, this._config, this._sourceStore);
+        },
+        show : function() {
+            this.getStyle().setProperty('visibility', 'visible');
         },
         getConfig : function() {
             return this._config;
@@ -944,7 +944,7 @@ define('spyl/ffgui/FFguiEasy', [
             };
 
             var addButton = new Button({attributes: {text: 'Add...'}, style: {width: '12fw', height: Config.BUTTON_HEIGHT}}, partsToolPanel);
-            var sourcesButton = new Button({attributes: {text: 'Sources'}, style: {width: '12fw', height: Config.BUTTON_HEIGHT}}, partsToolPanel);
+            var sourcesButton = new Button({attributes: {text: BOX_CHAR + ' Sources'}, style: {width: '12fw', height: Config.BUTTON_HEIGHT}}, partsToolPanel);
             //var menuButton = new Button({attributes: {text: MENU_CHAR}, style: {width: '3fw', height: Config.BUTTON_HEIGHT}}, partsToolPanel);
             addButton.observe('click', this.onAddSources.bind(this));
             sourcesButton.observe('click', this.showSourcesFrame.bind(this));
@@ -1245,6 +1245,7 @@ define('spyl/ffgui/FFguiEasy', [
             // Show splash will loading?
             var configFilename = System.getProperty('spyl.ffgui.configFilename', 'ffgui.json');
             var tabsFilename = System.getProperty('spyl.ffgui.tabsFilename', 'ffgui.tabs.json');
+            var args = System.getArguments();
             var config, ui, configTabs; 
             var ffmpeg = null;
             try {
@@ -1272,8 +1273,7 @@ define('spyl/ffgui/FFguiEasy', [
             }
             GuiUtilities.invokeLater(function() {
                 ui = new FFguiEasyFrame(config, configTabs, ffmpeg);
-                var args = System.getArguments();
-                var i = 0, start = false;
+                var i = 0;
                 while ((i < args.length) && (args[i].indexOf('-') == 0)) {
                     switch (args[i]) {
                     case '--clean':
@@ -1285,18 +1285,7 @@ define('spyl/ffgui/FFguiEasy', [
                         break;
                     case '-c':
                     case '--configuration':
-                        //ui._destinationTab.loadConfig(args[++i]);
-                        break;
-                    case '-d':
-                    case '--destination':
-                        //ui._destinationTab._fileEdit.setAttribute('text', args[++i]);
-                        break;
-                    case '-e':
-                    case '--exitAfter':
-                        //ui._destinationTab._exitAfterCB.setSelected(true);
-                        break;
-                    case '--start':
-                        start = true;
+                        ui.getFFmpegConfigFrame().loadConfig(args[++i]);
                         break;
                     case '--updateEncoders':
                         System.err.println('Extracting encoders...');
@@ -1305,14 +1294,14 @@ define('spyl/ffgui/FFguiEasy', [
                     }
                     i++;
                 }
-                while (i < args.length) {
-                    //System.out.println('Adding source: ' + args[i]);
-                    ui.addSourceFile(new File(args[i++]), true);
+                if (i < args.length) {
+                    while (i < args.length) {
+                        //System.out.println('Adding source: ' + args[i]);
+                        ui.addSourceFile(new File(args[i++]), true);
+                    }
+                    ui.updateParts();
                 }
-                ui.updateParts();
-                if (start) {
-                    //ui.startTranscoding();
-                }
+                ui.show();
             });
         }
     });
