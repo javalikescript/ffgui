@@ -273,17 +273,19 @@ define('spyl/ffgui/FFguiEasy', [
             for (var i = 0; i < this._parts.length; i++) {
                 var part = this._parts[i];
                 var endTime = time + part.getDuration();
-                if (time >= from) {
-                    if (endTime < to) {
-                        parts.push(part);
-                    } else {
-                        parts.push(part.newPart(0, to - time));
-                    }
-                } else if (endTime > from) {
-                    if (endTime < to) {
-                        parts.push(part.newPart(from - time));
-                    } else {
-                        parts.push(part.newPart(from - time, to - time));
+                if ((time <= to) && (endTime >= from)) {
+                    if (time >= from) {
+                        if (endTime < to) {
+                            parts.push(part);
+                        } else {
+                            parts.push(part.newPart(0, to - time));
+                        }
+                    } else if (endTime > from) {
+                        if (endTime < to) {
+                            parts.push(part.newPart(from - time));
+                        } else {
+                            parts.push(part.newPart(from - time, to - time));
+                        }
                     }
                 }
                 time = endTime;
