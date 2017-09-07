@@ -1082,7 +1082,7 @@ define('spyl/ffgui/FFguiEasy', [
             this._sourcesFrame.getStyle().setProperty('visibility', 'visible');
         },
         computeParts : function() {
-            this._overviewPanel.computeParts();
+            return this._overviewPanel.computeParts();
         },
         updateParts : function() {
             // TODO Refresh panels
