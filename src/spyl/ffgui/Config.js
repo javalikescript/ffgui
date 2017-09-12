@@ -98,12 +98,15 @@ define('spyl/ffgui/Config', [
                 input.close();
             }
         },
-        loadJSON: function(file) {
+        loadJSON: function(file, defaultValue) {
             var s = Config.loadAsString(file);
-            if ((s.length == 0) || (s.indexOf('{') != 0)) {
-                return null;
+            if (s.charAt(0) === '{') {
+                var v = eval('(' + s + ')');
+                if (typeof v === 'object') {
+                    return v;
+                }
             }
-            return eval('(' + s + ')');
+            return typeof defaultValue === 'object' ? defaultValue : {};
         },
         saveJSON: function(file, object) {
             var s = Object.toJSON(object);

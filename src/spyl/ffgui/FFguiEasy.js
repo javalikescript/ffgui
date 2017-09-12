@@ -484,8 +484,8 @@ define('spyl/ffgui/FFguiEasy', [
             next1mBtn.observe('click', this.moveTime.bind(this, 60000));
 
             new Label({attributes: {text: 'Mark:'}, style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
-            this._beginMarkBtn = new Button({attributes: {text: 'Set begin mark'}, style: {width: MARK_WIDTH, height: Config.BUTTON_HEIGHT}}, this);
-            this._endMarkBtn = new Button({attributes: {text: 'Set end mark'}, style: {width: MARK_WIDTH, height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
+            this._beginMarkBtn = new Button({attributes: {text: '[ Set begin mark'}, style: {width: MARK_WIDTH, height: Config.BUTTON_HEIGHT}}, this);
+            this._endMarkBtn = new Button({attributes: {text: 'Set end mark ]'}, style: {width: MARK_WIDTH, height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
 
             new Label({attributes: {text: 'Edition:'}, style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
             var cutButton = new Button({attributes: {text: 'Cut ' + PART_CHAR + SEPARATOR_CHAR + PART_CHAR}, style: {width: MARK_WIDTH, height: Config.BUTTON_HEIGHT}}, this);
@@ -774,6 +774,21 @@ define('spyl/ffgui/FFguiEasy', [
                 return;
             }
             source.updateSource(name);
+        },
+        removeSources : function() {
+            //this._childrenBackup = [].concat(this.getChildren());
+            this.invalidate(true);
+            this.removeChildren();
+            this.update();
+        },
+        updateSources : function() {
+            var sources = this._sourceStore.getSources();
+            this.invalidate(true);
+            this.removeChildren();
+            for (var i = 0; i < sources.length; i++) {
+                this.addSource(sources[i]);
+            }
+            this.update();
         }
     });
 
@@ -787,6 +802,12 @@ define('spyl/ffgui/FFguiEasy', [
         },
         getSourcesPanel : function() {
             return this._panel;
+        },
+        removeSources : function() {
+            this._panel.removeSources();
+        },
+        updateSources : function() {
+            this._panel.updateSources();
         }
     });
 
@@ -1103,7 +1124,7 @@ define('spyl/ffgui/FFguiEasy', [
         addSourceFiles : function(files, addPart) {
             this._loadingFrame.show();
             try {
-                for (var i = 1; i < files.length; i++) {
+                for (var i = 0; i < files.length; i++) {
                     this._loadingFrame.refresh();
                     this.addSourceFile(files[i], addPart);
                 }
@@ -1113,15 +1134,16 @@ define('spyl/ffgui/FFguiEasy', [
         },
         onAddSources : function(event) {
             var filenames = CommonDialog.getOpenFileName(this,
-                    CommonDialog.OFN_LONGNAMES | CommonDialog.OFN_NOCHANGEDIR | CommonDialog.OFN_EXPLORER | CommonDialog.OFN_ALLOWMULTISELECT);
-            if (! filenames || (filenames.length == 0)) {
+                    CommonDialog.OFN_LONGNAMES | CommonDialog.OFN_NOCHANGEDIR |
+                    CommonDialog.OFN_EXPLORER | CommonDialog.OFN_ALLOWMULTISELECT);
+            if (! filenames || (filenames.length === 0)) {
                 return;
             }
+            //Logger.getInstance().info('onAddSources() "' + filenames.join('", "') + '"');
             var dir = new File(filenames[0]);
-            if (filenames.length == 1) {
+            if (filenames.length === 1) {
                 this.addSourceFile(dir, true);
-            }
-            if (dir.exists()) {
+            } else if (dir.exists()) {
                 var files = [];
                 for (var i = 1; i < filenames.length; i++) {
                     files.push(new File(dir, filenames[i]));
@@ -1134,30 +1156,40 @@ define('spyl/ffgui/FFguiEasy', [
             this._partStore.clean();
             this._sourceStore.clean();
             this._fmpegConfigFrame.resetTabs();
+            this._sourcesFrame.removeSources();
         },
         openProjectObject : function(project) {
             this.reset();
-            this._fmpegConfigFrame.loadTabs(project.tabs);
-            this._fmpegConfigFrame.load(project.destination);
-            var idMap = {};
-            for (var id in project.sources) {
-                var sourceFile = new File(project.sources[id]);
-                if (sourceFile.exists()) {
-                    this._loadingFrame.refresh();
-                    var source = this.addSourceFile(sourceFile, false);
-                    idMap[id] = source.getId();
-                }
+            if ('tabs' in project) {
+                this._fmpegConfigFrame.loadTabs(project.tabs);
             }
-            for (var id in project.parts) {
-                var part = project.parts[id];
-                if (part.sourceId in idMap) {
-                    var source = this._sourceStore.getSource(idMap[part.sourceId]);
-                    if (source) {
-                        this._partStore.addPart(new Part(source, part.from, part.to));
+            if ('destination' in project) {
+                this._fmpegConfigFrame.load(project.destination);
+            }
+            var idMap = {};
+            if ('sources' in project) {
+                for (var id in project.sources) {
+                    var sourceFile = new File(project.sources[id]);
+                    if (sourceFile.exists()) {
+                        this._loadingFrame.refresh();
+                        var source = this.addSourceFile(sourceFile, false);
+                        idMap[id] = source.getId();
                     }
                 }
             }
-            //this._editTab.load(project.parts);
+            //this._sourcesFrame.updateSources();
+            if ('parts' in project) {
+                for (var id in project.parts) {
+                    var part = project.parts[id];
+                    if (part.sourceId in idMap) {
+                        var source = this._sourceStore.getSource(idMap[part.sourceId]);
+                        if (source) {
+                            this._partStore.addPart(new Part(source, part.from, part.to));
+                        }
+                    }
+                }
+                //this._editTab.load(project.parts);
+            }
             this.updateParts();
         },
         openProject : function(filename) {
