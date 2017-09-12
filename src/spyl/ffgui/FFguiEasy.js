@@ -73,7 +73,9 @@ define('spyl/ffgui/FFguiEasy', [
     var PLAY_CHAR = '>'; //'\u276f'; //'>'; //
     var PREVIOUS_CHAR = '<'; //'\u276e'; //'\u276c'; //'<'; //
     var NEXT_CHAR = '>'; //'\u276f'; //'\u276d'; //'>'; //
-
+    var BEGIN_MARK_CHAR = '[';
+    var END_MARK_CHAR = ']';
+    
     var SourceStore = Class.create({
         initialize : function(ffmpeg, config) {
             this._ffmpeg = ffmpeg;
@@ -484,14 +486,14 @@ define('spyl/ffgui/FFguiEasy', [
             next1mBtn.observe('click', this.moveTime.bind(this, 60000));
 
             new Label({attributes: {text: 'Mark:'}, style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
-            this._beginMarkBtn = new Button({attributes: {text: '[ Set begin mark'}, style: {width: MARK_WIDTH, height: Config.BUTTON_HEIGHT}}, this);
-            this._endMarkBtn = new Button({attributes: {text: 'Set end mark ]'}, style: {width: MARK_WIDTH, height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
+            this._beginMarkBtn = new Button({attributes: {text: BEGIN_MARK_CHAR + ' Set begin mark'}, style: {width: MARK_WIDTH, height: Config.BUTTON_HEIGHT}}, this);
+            this._endMarkBtn = new Button({attributes: {text: 'Set end mark ' + END_MARK_CHAR}, style: {width: MARK_WIDTH, height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
 
             new Label({attributes: {text: 'Edition:'}, style: {width: '1w', height: Config.LABEL_HEIGHT, clear: 'right'}}, this);
-            var cutButton = new Button({attributes: {text: 'Cut ' + PART_CHAR + SEPARATOR_CHAR + PART_CHAR}, style: {width: MARK_WIDTH, height: Config.BUTTON_HEIGHT}}, this);
             var removeSelectionButton = new Button({attributes: {text: 'Remove ' + PART_CHAR + '[' + DELETE_CHAR + ']' + PART_CHAR}, style: {width: MARK_WIDTH, height: Config.BUTTON_HEIGHT}}, this);
             var keepSelectionButton = new Button({attributes: {text: 'Extract ' + DELETE_CHAR + '[' + PART_CHAR + ']' + DELETE_CHAR}, style: {width: MARK_WIDTH, height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
-
+            var cutButton = new Button({attributes: {text: 'Cut ' + PART_CHAR + SEPARATOR_CHAR + PART_CHAR}, style: {width: MARK_WIDTH, height: Config.BUTTON_HEIGHT, clear: 'right'}}, this);
+            
             this._beginMarkBtn.observe('click', this.onSetBeginMark.bind(this));
             this._endMarkBtn.observe('click', this.onSetEndMark.bind(this));
 
@@ -615,8 +617,8 @@ define('spyl/ffgui/FFguiEasy', [
                 this._endMark = this._beginMark;
                 this._beginMark = from;
             }
-            this._beginMarkBtn.setAttribute('text', '[ ' + FFmpeg.formatTime(this._beginMark));
-            this._endMarkBtn.setAttribute('text', FFmpeg.formatTime(this._endMark) + ' ]');
+            this._beginMarkBtn.setAttribute('text', BEGIN_MARK_CHAR + ' ' + FFmpeg.formatTime(this._beginMark));
+            this._endMarkBtn.setAttribute('text', FFmpeg.formatTime(this._endMark) + ' ' + END_MARK_CHAR);
         },
         setBeginMark : function(time) {
             Logger.getInstance().debug('PreviewPanel.setBeginMark(' + FFmpeg.formatTime(time) + ')');
