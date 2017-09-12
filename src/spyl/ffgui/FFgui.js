@@ -699,7 +699,9 @@ define('spyl/ffgui/FFgui', [
                 }
             });
         },
-        FFMPEG_URL: 'http://ffmpeg.org/'
+        FFMPEG_URL: 'http://ffmpeg.org/',
+        FFGUI_CODE_URL: 'https://github.com/javalikescript/ffgui',
+        FFGUI_HOME_URL: 'https://javalikescript.github.io/ffgui'
     });
 
     return FFgui;

@@ -778,10 +778,7 @@ define('spyl/ffgui/FFguiEasy', [
             source.updateSource(name);
         },
         removeSources : function() {
-            //this._childrenBackup = [].concat(this.getChildren());
-            this.invalidate(true);
             this.removeChildren();
-            this.update();
         },
         updateSources : function() {
             var sources = this._sourceStore.getSources();
@@ -1343,7 +1340,7 @@ define('spyl/ffgui/FFguiEasy', [
                     'Javascript engine: ' + System.getProperty('javascript.engine') + ', v.' + System.getProperty('javascript.version') + '\n' +
                     'View the <A HREF="' + vendorUrl + 'license.txt">license</A>\n' +
                     '\n' +
-                    'Visit the <A HREF="' + vendorUrl + 'project/ffgui/">project home page</A>\n' +
+                    'Visit the <A HREF="' + FFgui.FFGUI_CODE_URL + '">project home page</A>\n' +
                     'Visit <A HREF="' + FFgui.FFMPEG_URL + '">FFmpeg web site</A>',
                     w32Window.CONSTANT.WS.CHILD | w32Window.CONSTANT.WS.VISIBLE,
                     0, 0, 0, 0, aboutFrame._window);
