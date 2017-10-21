@@ -1374,7 +1374,7 @@ define('spyl/ffgui/FFguiEasy', [
         },
         main : function(args) {
             System.err.println('Initializing UI...');
-            // Show splash will loading?
+            // Show splash while loading?
             var configFilename = System.getProperty('spyl.ffgui.configFilename', 'ffgui.json');
             var tabsFilename = System.getProperty('spyl.ffgui.tabsFilename', 'ffgui.tabs.json');
             var args = System.getArguments();
