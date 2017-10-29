@@ -6,6 +6,7 @@ define('spyl/files/FileSet', [
   'jls/lang/Promise',
   'jls/lang/ByteBuffer',
   'jls/lang/CharBuffer',
+  'jls/util/Formatter',
   'jls/io/File',
   'jls/io/FileInputStream',
   'jls/io/FileOutputStream',
@@ -20,6 +21,7 @@ define('spyl/files/FileSet', [
   Promise,
   ByteBuffer,
   CharBuffer,
+  Formatter,
   File,
   FileInputStream,
   FileOutputStream,
@@ -193,17 +195,13 @@ define('spyl/files/FileSet', [
             this._date = obj.date;
         },
         initializeFromString : function(s) {
-            var separator = ',';
-            var endDirIdIndex = s.indexOf(separator);
-            var endSizeIndex = s.indexOf(separator, endDirIdIndex + 1);
-            var endDateIndex = s.indexOf(separator, endSizeIndex + 1);
-            var endCrcIndex = s.indexOf(separator, endDateIndex + 1);
-            if ((endDirIdIndex > 0) && (endSizeIndex > endDirIdIndex) && (endDateIndex > endSizeIndex) && (endCrcIndex > endDateIndex)) {
-                this._dirId = parseInt(s.substring(0, endDirIdIndex), 10);
-                this._size = parseInt(s.substring(endDirIdIndex + 1, endSizeIndex), 10);
-                this._date = parseInt(s.substring(endSizeIndex + 1, endDateIndex), 10);
-                this._crc = parseInt(s.substring(endDateIndex + 1, endCrcIndex), 16);
-                this._name = s.substring(endCrcIndex + 1);
+            var fields = s.split(',');
+            if (fields.length > 4) {
+                this._dirId = parseInt(fields.shift(), 10);
+                this._size = parseInt(fields.shift(), 10);
+                this._date = parseInt(fields.shift(), 10);
+                this._crc = parseInt(fields.shift(), 16);
+                this._name = fields.join(',');
             }
         },
         shift : function(delta) {
@@ -220,6 +218,9 @@ define('spyl/files/FileSet', [
         },
         getSize : function() {
             return this._size;
+        },
+        getDate : function() {
+            return new Date(this._date * 1000);
         },
         setCrc : function(crc) {
             this._crc = crc;
@@ -285,6 +286,98 @@ define('spyl/files/FileSet', [
         },
         toString : function() {
             return this._dirId + ',' + this._size + ',' + this._date + ',' + this._crc.toString(16) + ',' + this._name;
+        }
+    });
+
+    var getEntryFile = function(entry, directories) {
+        var dirname = directories[entry.getDirId()];
+        return new File(dirname, entry.getName());
+    };
+
+    var getEntryDir = function(entry, directories) {
+        return new File(directories[entry.getDirId()]);
+    };
+
+    var getOrCreateDirId = function(dirname, directories) {
+        for (var i = 0; i < directories.length; i++) {
+            if (dirname === directories[i]) {
+                return i;
+            }
+        }
+        directories.push(dirname);
+        return directories.length - 1;
+    };
+
+    var CacheEntryChange = Class.create({
+        initialize : function() {
+        },
+        newEntry : function(entry, directories) {
+            return new CacheEntry(entry);
+        },
+        makeEntry : function(entry, directories) {
+        },
+        process : function(entry, directories, preview) {
+            var newEntry = this.newEntry(entry, directories);
+            if (!preview) {
+                this.makeEntry(entry, newEntry, directories);
+            }
+            return newEntry;
+        }
+    });
+
+    var mkdirs = function(file) {
+        // mkdirs is not supported
+        if (file.isDirectory()) {
+            return true;
+        }
+        var parentFile = file.getParentFile();
+        if (!((parentFile === null) || parentFile.isDirectory() || mkdirs(parentFile))) {
+            return false;
+        }
+        return file.mkdir();
+    };
+
+    var CacheEntryChangeMove = Class.create(CacheEntryChange, {
+        initialize : function($super, path, relative, format, mkdirs) {
+            $super();
+            this._path = path;
+            this._relative = typeof relative === 'boolean' && relative;
+            this._format = typeof format === 'boolean' && format;
+            this._mkdirs = typeof mkdirs === 'boolean' && mkdirs;
+        },
+        newEntry : function(entry, directories) {
+            var newEntry = new CacheEntry(entry);
+            var dirname = directories[newEntry.getDirId()];
+            var path = this._format ? Formatter.format(this._path, newEntry.getDate()) : this._path;
+            var newDir = this._relative ? new File(dirname, path) : new File(path);
+            var newDirname = newDir.getPath();
+            if (dirname !== newDirname) {
+                var dirId = getOrCreateDirId(newDirname, directories);
+                newEntry.setDirId(dirId);
+            }
+            return newEntry;
+        },
+        makeEntry : function(entry, newEntry, directories) {
+            var dirname = directories[entry.getDirId()];
+            var file = new File(dirname, entry.getName());
+            var newDirname = directories[newEntry.getDirId()];
+            var newDir = new File(newDirname);
+            if (!newDir.isDirectory()) {
+                //mkdirs(newDir);
+            }
+            var newFile = new File(newDir, newEntry.getName());
+            //file.renameTo(newFile.getPath());
+        }
+    });
+
+    var CacheEntryChangeRemove = Class.create(CacheEntryChange, {
+        newEntry : function(entry) {
+            return null;
+        },
+        makeEntry : function(entry, newEntry, directories) {
+            var dirname = directories[entry.getDirId()];
+            var file = new File(dirname, entry.getName());
+            //file.remove();
         }
     });
 
@@ -382,13 +475,28 @@ define('spyl/files/FileSet', [
             });
             return this;
         },
+        getEntryFile: function(entry) {
+            return getEntryFile(entry, this._directories);
+        },
         computeCrc: function() {
             for (var i = 0; i < this._files.length; i++) {
-                var entry = this._files[i];
-                var dirname = this._directories[entry.getDirId()];
-                var file = new File(dirname, entry.getName());
+                var file = this.getEntryFile(this._files[i]);
                 entry.setCrc(crcLoad(file, buffer));
             }
+            return this;
+        },
+        applyChange : function(change, preview) {
+            var directories = this._directories.concat([]);
+            var entries = [];
+            for (var i = 0; i < this._files.length; i++) {
+                var entry = this._files[i];
+                var newEntry = change.process(entry, directories, preview);
+                if (newEntry !== null) {
+                    entries.push(newEntry);
+                }
+            }
+            this._directories = directories;
+            this._files = entries;
             return this;
         },
         info: function(out) {
@@ -428,9 +536,7 @@ define('spyl/files/FileSet', [
                 out = System.out;
             }
             for (var i = 0; i < this._files.length; i++) {
-                var entry = this._files[i];
-                var dirname = this._directories[entry.getDirId()];
-                var file = new File(dirname, entry.getName());
+                var file = this.getEntryFile(this._files[i]);
                 out.println(file.getPath());
             }
             return this;
@@ -448,22 +554,20 @@ define('spyl/files/FileSet', [
         status: function() {
             return 'id ' + this.getId() + ' with ' + this.getFileCount() + ' file(s)';
         },
-        duplicates: function() {
-            var duplicates = [];
+        filterDuplicates: function(negate, ceil) {
+            var keep = !negate;
+            var entries = [];
             for (var i = this._files.length - 1; i >= 0; i--) {
                 var entry = this._files[i];
                 for (var j = i - 1; j >= 0; j--) {
                     var pde = this._files[j];
-                    if (pde.sameAs(entry)) {
-                        duplicates.push(entry);
+                    if (pde.sameAs(entry, ceil) === keep) {
+                        entries.push(entry);
                         break;
                     }
                 }
             }
-            return duplicates;
-        },
-        keepDuplicates: function() {
-            this._files = this.duplicates();
+            this._files = entries;
             return this;
         },
         filterPath: function(re, negate) {
@@ -495,36 +599,36 @@ define('spyl/files/FileSet', [
             this._files = entries;
             return this;
         },
-        hasSame: function(anEntry) {
+        hasSame: function(anEntry, ceil) {
             for (var i = 0; i < this._files.length; i++) {
                 var entry = this._files[i];
-                if (entry.sameAs(anEntry)) {
+                if (entry.sameAs(anEntry, ceil)) {
                     return true;
                 }
             }
             return false;
         },
-        filterSame: function(that, negate) {
+        filterSame: function(that, negate, ceil) {
             var keepSame = !negate;
             var entries = [];
             for (var i = this._files.length - 1; i >= 0; i--) {
                 var entry = this._files[i];
-                if (that.hasSame(entry) === keepSame) {
+                if (that.hasSame(entry, ceil) === keepSame) {
                     entries.push(entry);
                 }
             }
             this._files = entries;
             return this;
         },
-        intersection: function(that) {
+        intersection: function(that, ceil) {
             var intersection = this.copy();
-            intersection.filterSame(that, false);
+            intersection.filterSame(that, false, ceil);
             intersection.cleanDirectories();
             return intersection;
         },
-        exclude: function(that) {
+        exclude: function(that, ceil) {
             var intersection = this.copy();
-            intersection.filterSame(that, true);
+            intersection.filterSame(that, true, ceil);
             intersection.cleanDirectories();
             return intersection;
         }
@@ -537,6 +641,7 @@ define('spyl/files/FileSet', [
             var cache = new Cache();
             var cacheStack = [cache];
             var repository = new File('.');
+            var ceil = 50;
             var argDir, argRegExp;
             var args = System.getArguments();
             var argIndex = 0;
@@ -554,10 +659,22 @@ define('spyl/files/FileSet', [
                         System.out.println('Id is ' + cache.getId());
                     }
                     break;
+                case '--ceil':
+                    if (nextArg) {
+                        ceil = parseInt(nextArg, 10);
+                    } else {
+                        System.out.println('Ceil is ' + ceil);
+                    }
+                    break;
+                case '-r':
                 case '--repository':
-                    argDir = new File(nextArg);
-                    if (argDir.isDirectory()) {
-                        repository = argDir;
+                    if (nextArg) {
+                        argDir = new File(nextArg);
+                        if (argDir.isDirectory()) {
+                            repository = argDir;
+                        }
+                    } else {
+                        System.out.println('Repository is "' + repository + '"');
                     }
                     break;
                 case '--clear':
@@ -616,6 +733,20 @@ define('spyl/files/FileSet', [
                     System.out.println('computing crc...');
                     cache.computeCrc();
                     break;
+                case '--move':
+                    argDir = new File(nextArg);
+                    cache.applyChange(new CacheEntryChangeMove(argDir.getPath(), !argDir.isAbsolute(), nextArg.indexOf('%t') >= 0, true));
+                    break;
+                case '--moveDate':
+                    argDir = new File(nextArg);
+                    argDir = new File(argDir, '%tY/%<tY-%<tm-%<td');
+                    cache.applyChange(new CacheEntryChangeMove(argDir.getPath(), !argDir.isAbsolute(), true, true));
+                    break;
+                case '--moveMonth':
+                    argDir = new File(nextArg);
+                    argDir = new File(argDir, '%tY/%<tY-%<tm');
+                    cache.applyChange(new CacheEntryChangeMove(argDir.getPath(), !argDir.isAbsolute(), true, true));
+                    break;
                 case '--listDir':
                     cache.listDir();
                     break;
@@ -633,21 +764,25 @@ define('spyl/files/FileSet', [
                         System.out.println('' + i + ':' + cacheStack[i].status());
                     }
                     break;
-                case '--keepDuplicates':
-                    System.out.println('keeping duplicate...');
-                    cache.keepDuplicates();
-                    break;
                 case '--exclude':
                     if (cacheStack.length > 1) {
-                        cache = cacheStack.shift().exclude(cacheStack.shift());
+                        cache = cacheStack.shift().exclude(cacheStack.shift(), ceil);
                         cacheStack.unshift(cache);
                     }
                     break;
                 case '--intersection':
                     if (cacheStack.length > 1) {
-                        cache = cacheStack.shift().intersection(cacheStack.shift());
+                        cache = cacheStack.shift().intersection(cacheStack.shift(), ceil);
                         cacheStack.unshift(cache);
                     }
+                    break;
+                case '--keepDuplicates':
+                    System.out.println('keeping duplicate...');
+                    cache.filterDuplicates(false, ceil);
+                    break;
+                case '--filterDuplicates':
+                    System.out.println('filtering...');
+                    cache.filterDuplicates(true, ceil);
                     break;
                 case '--filterPath':
                     var negate = false;
