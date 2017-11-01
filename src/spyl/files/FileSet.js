@@ -480,7 +480,8 @@ define('spyl/files/FileSet', [
         },
         computeCrc: function() {
             for (var i = 0; i < this._files.length; i++) {
-                var file = this.getEntryFile(this._files[i]);
+                entry = this._files[i];
+                var file = this.getEntryFile(entry);
                 entry.setCrc(crcLoad(file, buffer));
             }
             return this;
