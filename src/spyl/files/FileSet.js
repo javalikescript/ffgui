@@ -84,7 +84,7 @@ define('spyl/files/FileSet', [
                 for (i = 0; i < files.length; i++) {
                     file = files[i];
                     if (file.isDirectory()) {
-                        forEachFile(file, fileFn, dirFn);
+                        forEachFile(file, fileFn, dirFn, recurse);
                     }
                 }
             }
