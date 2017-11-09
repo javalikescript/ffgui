@@ -114,12 +114,23 @@ define('spyl/files/FileSet', [
         }
     };
     
-    var loadAsLines = function(file) {
+    var loadAsLines = function(file, clean) {
         var content = loadAsString(file);
-        return content.split(/\r?\n/);
+        var lines = content.split(/\r?\n/);
+        if (clean) {
+            var newLines = [];
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i];
+                if (line) {
+                    newLines.push(line);
+                }
+            }
+            lines = newLines;
+        }
+        return lines;
     };
     
-    var save = function(file, content) {
+    var writeToFile = function(file, content) {
         var output = new OutputStreamWriter(new FileOutputStream(file), 'UTF-8');
         try {
             if (typeof content === 'string') {
@@ -443,11 +454,11 @@ define('spyl/files/FileSet', [
             var file = new File(repository, this._id + '_directories.txt');
             var lastDirId = this._directories.length;
             if (file.isFile()) {
-                this._directories = this._directories.concat(loadAsLines(file));
+                this._directories = this._directories.concat(loadAsLines(file, true));
             }
             file = new File(repository, this._id + '_files.txt');
             if (file.isFile()) {
-                var lines = loadAsLines(file);
+                var lines = loadAsLines(file, true);
                 for (var i = 0; i < lines.length; i++) {
                     var entry = new CacheEntry(lines[i]);
                     entry.shift(lastDirId);
@@ -458,9 +469,9 @@ define('spyl/files/FileSet', [
         },
         save: function(repository) {
             var file = new File(repository, this._id + '_directories.txt');
-            save(file, this._directories);
+            writeToFile(file, this._directories);
             file = new File(repository, this._id + '_files.txt');
-            save(file, this._files);
+            writeToFile(file, this._files);
             return this;
         },
         add: function(dir) {
@@ -709,18 +720,21 @@ define('spyl/files/FileSet', [
                 case '--clear':
                     cache.clear();
                     break;
+                case '-l':
                 case '--load':
                     cache = new Cache();
                     cache.setId(nextArg);
                     cache.load(repository);
                     cacheStack.unshift(cache);
                     break;
+                case '-s':
                 case '--save':
                     if (nextArg) {
                         cache.setId(nextArg);
                     }
                     cache.save(repository);
                     break;
+                case '-a':
                 case '--add':
                     argDir = new File(nextArg);
                     if (argDir.isDirectory()) {
@@ -748,9 +762,11 @@ define('spyl/files/FileSet', [
                     argDir = new File(argDir, '%tY/%<tY-%<tm');
                     cache.applyChange(new CacheEntryChangeMove(argDir.getPath(), !argDir.isAbsolute(), true, true));
                     break;
+                case '-ld':
                 case '--listDir':
                     cache.listDir();
                     break;
+                case '-ls':
                 case '--list':
                     cache.list();
                     break;
@@ -810,6 +826,12 @@ define('spyl/files/FileSet', [
                     System.out.println('filtering...');
                     cache.filterName(/\.jpe?g$/i, negate);
                     break;
+                case '--filterMpeg':
+                    var negate = nextArg === '!';
+                    System.out.println('filtering...');
+                    cache.filterName(/\.mp(?:e?g|4)$/i, negate);
+                    break;
+                case '-h':
                 case '--help':
                     System.err.println('Try:');
                     System.err.println('  --add [directory]');
