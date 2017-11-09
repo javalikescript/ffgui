@@ -145,6 +145,44 @@ define('spyl/files/FileSet', [
         }
     };
 
+    var DEBUG = false;
+
+    var mkdirs = function(file) {
+        // mkdirs is not supported
+        if (file.isDirectory()) {
+            return true;
+        }
+        var parentFile = file.getParentFile();
+        if (!((parentFile === null) || parentFile.isDirectory() || mkdirs(parentFile))) {
+            return false;
+        }
+        return file.mkdir();
+    };
+
+    var makeDirectories = function(file) {
+        if (DEBUG) {
+            System.err.println('"' + file.getPath() + '".mkdirs()');
+            return true;
+        }
+        return mkdirs(file);
+    };
+    
+    var renameFileTo = function(file, newFile) {
+        if (DEBUG) {
+            System.err.println('"' + file.getPath() + '".renameTo(' + newFile.getPath() + ')');
+            return true;
+        }
+        return file.renameTo(newFile.getPath());
+    };
+    
+    var removeFile = function(file) {
+        if (DEBUG) {
+            System.err.println('"' + file.getPath() + '".remove()');
+            return true;
+        }
+        return file.remove();
+    };
+    
     var getFileExtension = function(name) {
         var lastDotIndex = name.lastIndexOf('.');
         return lastDotIndex >= 0 ? name.substring(lastDotIndex + 1) : '';
@@ -336,18 +374,6 @@ define('spyl/files/FileSet', [
         }
     });
 
-    var mkdirs = function(file) {
-        // mkdirs is not supported
-        if (file.isDirectory()) {
-            return true;
-        }
-        var parentFile = file.getParentFile();
-        if (!((parentFile === null) || parentFile.isDirectory() || mkdirs(parentFile))) {
-            return false;
-        }
-        return file.mkdir();
-    };
-
     var CacheEntryChangeMove = Class.create(CacheEntryChange, {
         initialize : function($super, path, relative, format, mkdirs) {
             $super();
@@ -373,11 +399,11 @@ define('spyl/files/FileSet', [
             var file = new File(dirname, entry.getName());
             var newDirname = directories[newEntry.getDirId()];
             var newDir = new File(newDirname);
-            if (!newDir.isDirectory()) {
-                //mkdirs(newDir);
+            if (!newDir.isDirectory() && this._mkdirs) {
+                makeDirectories(newDir);
             }
             var newFile = new File(newDir, newEntry.getName());
-            //file.renameTo(newFile.getPath());
+            renameFileTo(file, newFile);
         }
     });
 
@@ -388,7 +414,7 @@ define('spyl/files/FileSet', [
         makeEntry : function(entry, newEntry, directories) {
             var dirname = directories[entry.getDirId()];
             var file = new File(dirname, entry.getName());
-            //file.remove();
+            removeFile(file);
         }
     });
 
@@ -663,6 +689,8 @@ define('spyl/files/FileSet', [
                 if ((argIndex < args.length) && (args[argIndex].charAt(0) !== '-')) {
                     nextArg = args[argIndex++];
                 }
+                var change = null;
+                var preview = true;
                 switch (arg) {
                 case '--id':
                     if (nextArg) {
@@ -748,19 +776,25 @@ define('spyl/files/FileSet', [
                     System.out.println('computing crc...');
                     cache.computeCrc();
                     break;
+                case '--moveDo':
+                    preview = false;
                 case '--move':
                     argDir = new File(nextArg);
-                    cache.applyChange(new CacheEntryChangeMove(argDir.getPath(), !argDir.isAbsolute(), nextArg.indexOf('%t') >= 0, true));
+                    change = new CacheEntryChangeMove(argDir.getPath(), !argDir.isAbsolute(), nextArg.indexOf('%t') >= 0, true);
                     break;
+                case '--moveDateDo':
+                    preview = false;
                 case '--moveDate':
                     argDir = new File(nextArg);
                     argDir = new File(argDir, '%tY/%<tY-%<tm-%<td');
-                    cache.applyChange(new CacheEntryChangeMove(argDir.getPath(), !argDir.isAbsolute(), true, true));
+                    change = new CacheEntryChangeMove(argDir.getPath(), !argDir.isAbsolute(), true, true);
                     break;
+                case '--moveMonthDo':
+                    preview = false;
                 case '--moveMonth':
                     argDir = new File(nextArg);
                     argDir = new File(argDir, '%tY/%<tY-%<tm');
-                    cache.applyChange(new CacheEntryChangeMove(argDir.getPath(), !argDir.isAbsolute(), true, true));
+                    change = new CacheEntryChangeMove(argDir.getPath(), !argDir.isAbsolute(), true, true);
                     break;
                 case '-ld':
                 case '--listDir':
@@ -840,6 +874,10 @@ define('spyl/files/FileSet', [
                 default:
                     System.err.println('Invalid argument, ' + args[argIndex]);
                     System.exit(22);
+                }
+                if (change !== null) {
+                    cache.applyChange(change, preview);
+                    preview = true;
                 }
                 System.out.println(cache.status());
             }
